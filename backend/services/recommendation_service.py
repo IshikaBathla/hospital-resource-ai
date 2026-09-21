@@ -6,6 +6,7 @@ from backend.models.patient import Patient
 from backend.models.bed import Bed
 from backend.models.staff import Staff
 from backend.models.equipment import Equipment
+from backend.models.recommendation import Recommendation
 
 from backend.services.constraint_service import (
     get_reallocation_candidates
@@ -20,7 +21,6 @@ def get_available_bed(
     db: Session,
     ward: str
 ):
-
     return (
         db.query(Bed)
         .filter(
@@ -36,7 +36,6 @@ def get_future_beds(
     db: Session,
     ward: str
 ):
-
     now = datetime.now()
 
     return (
@@ -58,7 +57,6 @@ def get_available_staff(
     db: Session,
     department: str
 ):
-
     return (
         db.query(Staff)
         .filter(
@@ -74,7 +72,6 @@ def get_available_equipment(
     db: Session,
     location: str
 ):
-
     return (
         db.query(Equipment)
         .filter(
@@ -89,16 +86,12 @@ def get_available_equipment(
 def calculate_wait_minutes(
     release_time
 ):
-
     if not release_time:
         return None
 
     if release_time.tzinfo is None:
-
         now = datetime.now()
-
     else:
-
         now = datetime.now(
             timezone.utc
         )
@@ -117,7 +110,6 @@ def generate_recommendation(
     db: Session,
     patient_id: str
 ):
-
     # Automatically release expired resources
     refresh_expired_procedures(db)
 
@@ -130,7 +122,6 @@ def generate_recommendation(
     )
 
     if not patient:
-
         return {
             "status": "error",
             "message": "Patient not found"
@@ -159,7 +150,6 @@ def generate_recommendation(
         )
 
         if icu_bed:
-
             return {
                 "status": "success",
                 "patient_id": patient_id,
@@ -194,7 +184,6 @@ def generate_recommendation(
         )
 
         if future_beds:
-
             bed = future_beds[0]
 
             wait_minutes = (
@@ -260,7 +249,6 @@ def generate_recommendation(
             ]
 
             if allowed_candidates:
-
                 candidate = (
                     allowed_candidates[0]
                 )
@@ -304,7 +292,6 @@ def generate_recommendation(
         )
 
         if general_bed:
-
             return {
                 "status": "success",
                 "patient_id": patient_id,
@@ -361,7 +348,6 @@ def generate_recommendation(
     )
 
     if general_bed:
-
         return {
             "status": "success",
             "patient_id": patient_id,
@@ -392,7 +378,6 @@ def generate_recommendation(
     )
 
     if future_beds:
-
         bed = future_beds[0]
 
         return {
@@ -442,9 +427,8 @@ def generate_recommendation(
             "is currently available.",
 
         "human_decision_required":
-            True
+        True
     }
-from backend.models.recommendation import Recommendation
 
 
 def save_recommendation(
@@ -453,7 +437,34 @@ def save_recommendation(
 ):
     """
     Save generated recommendation into database.
+
+    Prevents duplicate pending recommendations
+    for the same patient.
     """
+
+    patient_id = recommendation_data[
+        "patient_id"
+    ]
+
+    # =====================================
+    # DUPLICATE PREVENTION
+    # =====================================
+
+    existing_recommendation = (
+        db.query(Recommendation)
+        .filter(
+            Recommendation.patient_id == patient_id,
+            Recommendation.status == "pending"
+        )
+        .first()
+    )
+
+    if existing_recommendation:
+        return existing_recommendation
+
+    # =====================================
+    # EXTRACT RECOMMENDED RESOURCES
+    # =====================================
 
     action = recommendation_data.get(
         "recommended_action"
@@ -475,10 +486,12 @@ def save_recommendation(
         action.get("equipment_id")
     )
 
+    # =====================================
+    # CREATE RECOMMENDATION
+    # =====================================
+
     recommendation = Recommendation(
-        patient_id=recommendation_data[
-            "patient_id"
-        ],
+        patient_id=patient_id,
 
         recommendation_type=
             recommendation_data[
@@ -509,14 +522,16 @@ def save_recommendation(
     db.refresh(recommendation)
 
     return recommendation
-from backend.models.patient import Patient
-from backend.models.recommendation import Recommendation
 
 
-def get_highest_priority_waiting_patient(db: Session):
+def get_highest_priority_waiting_patient(
+    db: Session
+):
     patients = (
         db.query(Patient)
-        .filter(Patient.status == "waiting")
+        .filter(
+            Patient.status == "waiting"
+        )
         .all()
     )
 
@@ -542,8 +557,11 @@ def get_highest_priority_waiting_patient(db: Session):
         pending = (
             db.query(Recommendation)
             .filter(
-                Recommendation.patient_id == patient.patient_id,
-                Recommendation.status == "pending"
+                Recommendation.patient_id ==
+                patient.patient_id,
+
+                Recommendation.status ==
+                "pending"
             )
             .first()
         )
@@ -558,7 +576,9 @@ def generate_automatic_recommendation(
     db: Session,
     released_bed_id: str
 ):
-    patient = get_highest_priority_waiting_patient(db)
+    patient = get_highest_priority_waiting_patient(
+        db
+    )
 
     if not patient:
         return None
@@ -566,8 +586,11 @@ def generate_automatic_recommendation(
     pending_bed_recommendation = (
         db.query(Recommendation)
         .filter(
-            Recommendation.recommended_bed_id == released_bed_id,
-            Recommendation.status == "pending"
+            Recommendation.recommended_bed_id ==
+            released_bed_id,
+
+            Recommendation.status ==
+            "pending"
         )
         .first()
     )
@@ -580,7 +603,9 @@ def generate_automatic_recommendation(
         patient.patient_id
     )
 
-    if recommendation_data.get("status") == "error":
+    if recommendation_data.get(
+        "status"
+    ) == "error":
         return None
 
     recommendation = save_recommendation(
