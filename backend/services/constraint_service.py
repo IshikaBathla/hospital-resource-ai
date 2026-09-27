@@ -8,6 +8,13 @@ def can_reallocate_patient(
     db: Session,
     patient_id: str
 ):
+    """
+    Check whether an admitted patient can be considered
+    for reallocation.
+
+    This function only validates the constraint.
+    It does NOT perform any reallocation.
+    """
 
     patient = (
         db.query(Patient)
@@ -18,18 +25,21 @@ def can_reallocate_patient(
     )
 
     if not patient:
-        return False, "Patient not found"
-
-    if patient.emergency_level.lower() == "critical":
         return (
             False,
-            "Critical patient cannot be reallocated"
+            "Patient not found"
         )
 
     if patient.status.lower() != "admitted":
         return (
             False,
             "Patient is not currently admitted"
+        )
+
+    if patient.emergency_level.lower() == "critical":
+        return (
+            False,
+            "Critical patient cannot be reallocated"
         )
 
     return (
@@ -42,6 +52,14 @@ def get_reallocation_candidates(
     db: Session,
     target_patient_id: str
 ):
+    """
+    Find occupied ICU beds whose patients can potentially
+    be reallocated.
+
+    The target patient itself is excluded.
+
+    No database state is modified.
+    """
 
     candidates = []
 
@@ -51,12 +69,17 @@ def get_reallocation_candidates(
             Bed.ward == "ICU",
             Bed.status == "occupied"
         )
+        .order_by(Bed.bed_id)
         .all()
     )
 
     for bed in beds:
 
         if not bed.patient_id:
+            continue
+
+        # Do not consider the target patient itself.
+        if bed.patient_id == target_patient_id:
             continue
 
         allowed, reason = can_reallocate_patient(

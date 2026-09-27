@@ -38,6 +38,7 @@ from backend.services.background_service import (
     background_resource_monitor
 )
 
+from backend.routers.simulation import router as simulation_router
 
 # =========================================================
 # APPLICATION LIFESPAN
@@ -130,7 +131,7 @@ app.include_router(
     procedure_router
 )
 
-
+app.include_router(simulation_router)
 # =========================================================
 # HEALTH CHECK
 # =========================================================
