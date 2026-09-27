@@ -13,7 +13,8 @@ from backend.schemas.staff import StaffResponse
 from backend.services.staff_service import (
     get_all_staff,
     get_staff_by_id,
-    get_available_staff
+    get_available_staff,
+    update_staff_status
 )
 
 
@@ -72,3 +73,29 @@ def get_staff_member(
         )
 
     return staff
+
+
+@router.patch(
+    "/{staff_id}/status",
+    response_model=StaffResponse
+)
+def update_status(
+    staff_id: str,
+    status: str,
+    db: Session = Depends(get_db)
+):
+
+    try:
+
+        return update_staff_status(
+            db,
+            staff_id,
+            status
+        )
+
+    except ValueError as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )

@@ -46,3 +46,41 @@ def get_available_staff(
         )
 
     return query.all()
+
+
+def update_staff_status(
+    db: Session,
+    staff_id: str,
+    status: str
+):
+
+    staff = get_staff_by_id(
+        db,
+        staff_id
+    )
+
+    if not staff:
+        raise ValueError(
+            "Staff member not found"
+        )
+
+    allowed_statuses = {
+        "available",
+        "assigned",
+        "busy",
+        "off_duty"
+    }
+
+    if status not in allowed_statuses:
+        raise ValueError(
+            "Invalid staff status. "
+            "Allowed values: available, "
+            "assigned, busy, off_duty"
+        )
+
+    staff.status = status
+
+    db.commit()
+    db.refresh(staff)
+
+    return staff

@@ -22,7 +22,8 @@ from backend.schemas.recommendation import (
 
 from backend.services.recommendation_service import (
     generate_recommendation,
-    save_recommendation
+    save_recommendation,
+    validate_pending_recommendations
 )
 
 
@@ -87,6 +88,22 @@ def get_patient_recommendation(
         "database_status":
             recommendation.status
     }
+
+
+# =========================================================
+# VALIDATE PENDING RECOMMENDATIONS
+# =========================================================
+
+@router.post(
+    "/validate-pending"
+)
+def validate_recommendations(
+    db: Session = Depends(get_db)
+):
+
+    return validate_pending_recommendations(
+        db
+    )
 
 
 # =========================================================
@@ -237,19 +254,14 @@ def approve_recommendation(
         )
 
     # Allocate bed
-
     bed.status = "occupied"
-
     bed.patient_id = patient.patient_id
-
     bed.expected_release_at = None
 
     # Update patient
-
     patient.status = "admitted"
 
     # Create assignment
-
     assignment = Assignment(
         patient_id=patient.patient_id,
         bed_id=bed.bed_id
@@ -258,11 +270,9 @@ def approve_recommendation(
     db.add(assignment)
 
     # Update recommendation
-
     recommendation.status = "approved"
 
     # Save decision history
-
     db.execute(
         text("""
             INSERT INTO recommendation_decisions
@@ -347,10 +357,6 @@ def modify_recommendation(
     db: Session = Depends(get_db)
 ):
 
-    # -----------------------------------------------------
-    # Get recommendation
-    # -----------------------------------------------------
-
     recommendation = (
         db.query(Recommendation)
         .filter(
@@ -367,10 +373,6 @@ def modify_recommendation(
             detail="Recommendation not found"
         )
 
-    # -----------------------------------------------------
-    # Check recommendation status
-    # -----------------------------------------------------
-
     if recommendation.status != "pending":
 
         raise HTTPException(
@@ -380,10 +382,6 @@ def modify_recommendation(
                 "been processed"
             )
         )
-
-    # -----------------------------------------------------
-    # At least one modification required
-    # -----------------------------------------------------
 
     if not (
         action.modified_bed_id
@@ -398,10 +396,6 @@ def modify_recommendation(
                 "resource"
             )
         )
-
-    # -----------------------------------------------------
-    # Get patient
-    # -----------------------------------------------------
 
     patient = (
         db.query(Patient)
@@ -418,10 +412,6 @@ def modify_recommendation(
             status_code=404,
             detail="Patient not found"
         )
-
-    # -----------------------------------------------------
-    # Validate modified bed
-    # -----------------------------------------------------
 
     modified_bed = None
 
@@ -454,10 +444,6 @@ def modify_recommendation(
                 )
             )
 
-    # -----------------------------------------------------
-    # Validate modified staff
-    # -----------------------------------------------------
-
     modified_staff = None
 
     if action.modified_staff_id:
@@ -488,10 +474,6 @@ def modify_recommendation(
                     "is not available"
                 )
             )
-
-    # -----------------------------------------------------
-    # Validate modified equipment
-    # -----------------------------------------------------
 
     modified_equipment = None
 
@@ -524,10 +506,6 @@ def modify_recommendation(
                 )
             )
 
-    # -----------------------------------------------------
-    # Allocate modified bed
-    # -----------------------------------------------------
-
     if modified_bed:
 
         modified_bed.status = "occupied"
@@ -538,33 +516,17 @@ def modify_recommendation(
 
         modified_bed.expected_release_at = None
 
-    # -----------------------------------------------------
-    # Update patient
-    # -----------------------------------------------------
-
     if modified_bed:
 
         patient.status = "admitted"
-
-    # -----------------------------------------------------
-    # Allocate modified staff
-    # -----------------------------------------------------
 
     if modified_staff:
 
         modified_staff.status = "assigned"
 
-    # -----------------------------------------------------
-    # Allocate modified equipment
-    # -----------------------------------------------------
-
     if modified_equipment:
 
         modified_equipment.status = "assigned"
-
-    # -----------------------------------------------------
-    # Create assignment
-    # -----------------------------------------------------
 
     assignment = Assignment(
         patient_id=patient.patient_id,
@@ -590,15 +552,7 @@ def modify_recommendation(
 
     db.add(assignment)
 
-    # -----------------------------------------------------
-    # Update recommendation
-    # -----------------------------------------------------
-
     recommendation.status = "modified"
-
-    # -----------------------------------------------------
-    # Save decision history
-    # -----------------------------------------------------
 
     db.execute(
         text("""
@@ -649,10 +603,6 @@ def modify_recommendation(
         }
     )
 
-    # -----------------------------------------------------
-    # Commit
-    # -----------------------------------------------------
-
     db.commit()
 
     db.refresh(recommendation)
@@ -661,10 +611,6 @@ def modify_recommendation(
 
     if modified_bed:
         db.refresh(modified_bed)
-
-    # -----------------------------------------------------
-    # Response
-    # -----------------------------------------------------
 
     return {
         "status": "success",

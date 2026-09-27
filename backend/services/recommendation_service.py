@@ -68,6 +68,21 @@ def get_available_staff(
     )
 
 
+def get_recommended_staff(
+    db: Session,
+    ward: str
+):
+    available_staff = get_available_staff(
+        db,
+        ward
+    )
+
+    if not available_staff:
+        return None
+
+    return available_staff[0]
+
+
 def get_available_equipment(
     db: Session,
     location: str
@@ -106,11 +121,33 @@ def calculate_wait_minutes(
     )
 
 
+def build_bed_action(
+    db: Session,
+    bed: Bed
+):
+    staff = get_recommended_staff(
+        db,
+        bed.ward
+    )
+
+    return {
+        "type": "assign_available_bed",
+
+        "bed_id": bed.bed_id,
+
+        "ward": bed.ward,
+
+        "staff_id":
+            staff.staff_id
+            if staff
+            else None
+    }
+
+
 def generate_recommendation(
     db: Session,
     patient_id: str
 ):
-    # Automatically release expired resources
     refresh_expired_procedures(db)
 
     patient = (
@@ -140,32 +177,28 @@ def generate_recommendation(
         "high"
     ]:
 
-        # -----------------------------
         # ICU available now
-        # -----------------------------
-
         icu_bed = get_available_bed(
             db,
             "ICU"
         )
 
         if icu_bed:
+
+            action = build_bed_action(
+                db,
+                icu_bed
+            )
+
             return {
                 "status": "success",
                 "patient_id": patient_id,
+
                 "recommendation_type":
                     "immediate_resource",
 
-                "recommended_action": {
-                    "type":
-                        "assign_available_bed",
-
-                    "bed_id":
-                        icu_bed.bed_id,
-
-                    "ward":
-                        icu_bed.ward
-                },
+                "recommended_action":
+                    action,
 
                 "reason":
                     "An ICU bed is currently available.",
@@ -174,27 +207,25 @@ def generate_recommendation(
                     True
             }
 
-        # -----------------------------
         # Future ICU
-        # -----------------------------
-
         future_beds = get_future_beds(
             db,
             "ICU"
         )
 
         if future_beds:
+
             bed = future_beds[0]
 
-            wait_minutes = (
-                calculate_wait_minutes(
-                    bed.expected_release_at
-                )
+            staff = get_recommended_staff(
+                db,
+                bed.ward
             )
 
             return {
                 "status": "success",
                 "patient_id": patient_id,
+
                 "recommendation_type":
                     "future_resource",
 
@@ -212,7 +243,14 @@ def generate_recommendation(
                         bed.expected_release_at,
 
                     "expected_wait_minutes":
-                        wait_minutes
+                        calculate_wait_minutes(
+                            bed.expected_release_at
+                        ),
+
+                    "staff_id":
+                        staff.staff_id
+                        if staff
+                        else None
                 },
 
                 "reason":
@@ -224,10 +262,7 @@ def generate_recommendation(
                     True
             }
 
-        # -----------------------------
         # Reallocation
-        # -----------------------------
-
         general_bed = get_available_bed(
             db,
             "General"
@@ -249,13 +284,20 @@ def generate_recommendation(
             ]
 
             if allowed_candidates:
+
                 candidate = (
                     allowed_candidates[0]
+                )
+
+                staff = get_recommended_staff(
+                    db,
+                    general_bed.ward
                 )
 
                 return {
                     "status": "success",
                     "patient_id": patient_id,
+
                     "recommendation_type":
                         "reallocation",
 
@@ -270,7 +312,12 @@ def generate_recommendation(
                             candidate["patient_id"],
 
                         "replacement_bed":
-                            general_bed.bed_id
+                            general_bed.bed_id,
+
+                        "staff_id":
+                            staff.staff_id
+                            if staff
+                            else None
                     },
 
                     "reason":
@@ -282,32 +329,30 @@ def generate_recommendation(
                         True
                 }
 
-        # -----------------------------
         # General fallback
-        # -----------------------------
-
         general_bed = get_available_bed(
             db,
             "General"
         )
 
         if general_bed:
+
+            action = build_bed_action(
+                db,
+                general_bed
+            )
+
+            action["type"] = "assign_general_bed"
+
             return {
                 "status": "success",
                 "patient_id": patient_id,
+
                 "recommendation_type":
                     "fallback_resource",
 
-                "recommended_action": {
-                    "type":
-                        "assign_general_bed",
-
-                    "bed_id":
-                        general_bed.bed_id,
-
-                    "ward":
-                        general_bed.ward
-                },
+                "recommended_action":
+                    action,
 
                 "reason":
                     "No ICU bed is currently available. "
@@ -318,13 +363,10 @@ def generate_recommendation(
                     True
             }
 
-        # -----------------------------
-        # No action
-        # -----------------------------
-
         return {
             "status": "success",
             "patient_id": patient_id,
+
             "recommendation_type":
                 "no_feasible_action",
 
@@ -348,22 +390,21 @@ def generate_recommendation(
     )
 
     if general_bed:
+
+        action = build_bed_action(
+            db,
+            general_bed
+        )
+
         return {
             "status": "success",
             "patient_id": patient_id,
+
             "recommendation_type":
                 "immediate_resource",
 
-            "recommended_action": {
-                "type":
-                    "assign_available_bed",
-
-                "bed_id":
-                    general_bed.bed_id,
-
-                "ward":
-                    general_bed.ward
-            },
+            "recommended_action":
+                action,
 
             "reason":
                 "A General ward bed is currently available.",
@@ -378,11 +419,18 @@ def generate_recommendation(
     )
 
     if future_beds:
+
         bed = future_beds[0]
+
+        staff = get_recommended_staff(
+            db,
+            bed.ward
+        )
 
         return {
             "status": "success",
             "patient_id": patient_id,
+
             "recommendation_type":
                 "future_resource",
 
@@ -402,7 +450,12 @@ def generate_recommendation(
                 "expected_wait_minutes":
                     calculate_wait_minutes(
                         bed.expected_release_at
-                    )
+                    ),
+
+                "staff_id":
+                    staff.staff_id
+                    if staff
+                    else None
             },
 
             "reason":
@@ -417,6 +470,7 @@ def generate_recommendation(
     return {
         "status": "success",
         "patient_id": patient_id,
+
         "recommendation_type":
             "no_feasible_action",
 
@@ -427,7 +481,7 @@ def generate_recommendation(
             "is currently available.",
 
         "human_decision_required":
-        True
+            True
     }
 
 
@@ -435,21 +489,11 @@ def save_recommendation(
     db: Session,
     recommendation_data: dict
 ):
-    """
-    Save generated recommendation into database.
-
-    Prevents duplicate pending recommendations
-    for the same patient.
-    """
-
     patient_id = recommendation_data[
         "patient_id"
     ]
 
-    # =====================================
-    # DUPLICATE PREVENTION
-    # =====================================
-
+    # Prevent duplicate pending recommendations
     existing_recommendation = (
         db.query(Recommendation)
         .filter(
@@ -461,10 +505,6 @@ def save_recommendation(
 
     if existing_recommendation:
         return existing_recommendation
-
-    # =====================================
-    # EXTRACT RECOMMENDED RESOURCES
-    # =====================================
 
     action = recommendation_data.get(
         "recommended_action"
@@ -485,10 +525,6 @@ def save_recommendation(
     recommended_equipment_id = (
         action.get("equipment_id")
     )
-
-    # =====================================
-    # CREATE RECOMMENDATION
-    # =====================================
 
     recommendation = Recommendation(
         patient_id=patient_id,
@@ -614,3 +650,74 @@ def generate_automatic_recommendation(
     )
 
     return recommendation
+
+
+def validate_pending_recommendations(
+    db: Session
+):
+    """
+    Validate all pending recommendations that
+    contain a recommended bed.
+
+    A recommendation becomes stale when:
+    - the recommended bed does not exist, or
+    - the recommended bed is no longer available.
+    """
+
+    pending_recommendations = (
+        db.query(Recommendation)
+        .filter(
+            Recommendation.status == "pending"
+        )
+        .all()
+    )
+
+    stale_recommendations = []
+
+    for recommendation in pending_recommendations:
+
+        if not recommendation.recommended_bed_id:
+            continue
+
+        bed = (
+            db.query(Bed)
+            .filter(
+                Bed.bed_id ==
+                recommendation.recommended_bed_id
+            )
+            .first()
+        )
+
+        if not bed:
+
+            recommendation.status = "stale"
+
+            stale_recommendations.append(
+                recommendation.recommendation_id
+            )
+
+            continue
+
+        if bed.status != "available":
+
+            recommendation.status = "stale"
+
+            stale_recommendations.append(
+                recommendation.recommendation_id
+            )
+
+    if stale_recommendations:
+        db.commit()
+
+    return {
+        "status": "success",
+
+        "checked":
+            len(pending_recommendations),
+
+        "stale_count":
+            len(stale_recommendations),
+
+        "stale_recommendation_ids":
+            stale_recommendations
+    }
