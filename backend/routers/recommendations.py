@@ -62,6 +62,16 @@ def get_patient_recommendation(
         recommendation_data
     )
 
+    if not recommendation:
+        raise HTTPException(
+            status_code=400,
+            detail="No feasible recommendation available"
+        )
+
+    action = recommendation_data.get(
+        "action"
+    )
+
     return {
         "status": "success",
 
@@ -74,10 +84,16 @@ def get_patient_recommendation(
         "recommendation_type":
             recommendation.recommendation_type,
 
-        "recommended_action":
-            recommendation_data[
-                "recommended_action"
-            ],
+        "recommended_action": action,
+
+        "recommended_bed_id":
+            recommendation.recommended_bed_id,
+
+        "recommended_staff_id":
+            recommendation.recommended_staff_id,
+
+        "recommended_equipment_id":
+            recommendation.recommended_equipment_id,
 
         "reason":
             recommendation.reason,
@@ -201,6 +217,10 @@ def approve_recommendation(
             )
         )
 
+    # -----------------------------------------------------
+    # Validate recommended bed
+    # -----------------------------------------------------
+
     if not recommendation.recommended_bed_id:
 
         raise HTTPException(
@@ -237,6 +257,10 @@ def approve_recommendation(
             )
         )
 
+    # -----------------------------------------------------
+    # Validate patient
+    # -----------------------------------------------------
+
     patient = (
         db.query(Patient)
         .filter(
@@ -253,26 +277,141 @@ def approve_recommendation(
             detail="Patient not found"
         )
 
+    # -----------------------------------------------------
+    # Validate recommended staff
+    # -----------------------------------------------------
+
+    staff = None
+
+    if recommendation.recommended_staff_id:
+
+        staff = (
+            db.query(Staff)
+            .filter(
+                Staff.staff_id
+                == recommendation.recommended_staff_id
+            )
+            .first()
+        )
+
+        if not staff:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Recommended staff not found"
+            )
+
+        if staff.status != "available":
+
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Staff {staff.staff_id} "
+                    "is no longer available"
+                )
+            )
+
+    # -----------------------------------------------------
+    # Validate recommended equipment
+    # -----------------------------------------------------
+
+    equipment = None
+
+    if recommendation.recommended_equipment_id:
+
+        equipment = (
+            db.query(Equipment)
+            .filter(
+                Equipment.equipment_id
+                == recommendation.recommended_equipment_id
+            )
+            .first()
+        )
+
+        if not equipment:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Recommended equipment not found"
+            )
+
+        if equipment.status != "available":
+
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Equipment "
+                    f"{equipment.equipment_id} "
+                    "is no longer available"
+                )
+            )
+
+    # -----------------------------------------------------
     # Allocate bed
+    # -----------------------------------------------------
+
     bed.status = "occupied"
+
     bed.patient_id = patient.patient_id
+
     bed.expected_release_at = None
 
+    # -----------------------------------------------------
     # Update patient
+    # -----------------------------------------------------
+
     patient.status = "admitted"
 
+    # -----------------------------------------------------
+    # Allocate staff
+    # -----------------------------------------------------
+
+    if staff:
+
+        staff.status = "assigned"
+
+    # -----------------------------------------------------
+    # Allocate equipment
+    # -----------------------------------------------------
+
+    if equipment:
+
+        equipment.status = "assigned"
+
+    # -----------------------------------------------------
     # Create assignment
+    # -----------------------------------------------------
+
     assignment = Assignment(
         patient_id=patient.patient_id,
-        bed_id=bed.bed_id
+
+        bed_id=bed.bed_id,
+
+        staff_id=(
+            staff.staff_id
+            if staff
+            else None
+        ),
+
+        equipment_id=(
+            equipment.equipment_id
+            if equipment
+            else None
+        )
     )
 
     db.add(assignment)
 
+    # -----------------------------------------------------
     # Update recommendation
+    # -----------------------------------------------------
+
     recommendation.status = "approved"
 
+    # -----------------------------------------------------
     # Save decision history
+    # -----------------------------------------------------
+
     db.execute(
         text("""
             INSERT INTO recommendation_decisions
@@ -314,12 +453,18 @@ def approve_recommendation(
     db.refresh(assignment)
     db.refresh(recommendation)
 
+    if staff:
+        db.refresh(staff)
+
+    if equipment:
+        db.refresh(equipment)
+
     return {
         "status": "success",
 
         "message":
             "Recommendation approved and "
-            "resource allocated",
+            "resources allocated",
 
         "recommendation_id":
             recommendation.recommendation_id,
@@ -335,6 +480,34 @@ def approve_recommendation(
 
         "bed_status":
             bed.status,
+
+        "staff_id":
+            (
+                staff.staff_id
+                if staff
+                else None
+            ),
+
+        "staff_status":
+            (
+                staff.status
+                if staff
+                else None
+            ),
+
+        "equipment_id":
+            (
+                equipment.equipment_id
+                if equipment
+                else None
+            ),
+
+        "equipment_status":
+            (
+                equipment.status
+                if equipment
+                else None
+            ),
 
         "assignment_id":
             assignment.assignment_id,
@@ -506,6 +679,10 @@ def modify_recommendation(
                 )
             )
 
+    # -----------------------------------------------------
+    # Allocate modified resources
+    # -----------------------------------------------------
+
     if modified_bed:
 
         modified_bed.status = "occupied"
@@ -516,8 +693,6 @@ def modify_recommendation(
 
         modified_bed.expected_release_at = None
 
-    if modified_bed:
-
         patient.status = "admitted"
 
     if modified_staff:
@@ -527,6 +702,10 @@ def modify_recommendation(
     if modified_equipment:
 
         modified_equipment.status = "assigned"
+
+    # -----------------------------------------------------
+    # Create assignment
+    # -----------------------------------------------------
 
     assignment = Assignment(
         patient_id=patient.patient_id,
@@ -553,6 +732,10 @@ def modify_recommendation(
     db.add(assignment)
 
     recommendation.status = "modified"
+
+    # -----------------------------------------------------
+    # Decision history
+    # -----------------------------------------------------
 
     db.execute(
         text("""
@@ -612,12 +795,18 @@ def modify_recommendation(
     if modified_bed:
         db.refresh(modified_bed)
 
+    if modified_staff:
+        db.refresh(modified_staff)
+
+    if modified_equipment:
+        db.refresh(modified_equipment)
+
     return {
         "status": "success",
 
         "message":
             "Recommendation modified "
-            "and resource allocated",
+            "and resources allocated",
 
         "recommendation_id":
             recommendation.recommendation_id,

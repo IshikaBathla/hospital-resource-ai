@@ -4,15 +4,17 @@ from backend.models.equipment import Equipment
 
 
 def get_all_equipment(db: Session):
-
-    return db.query(Equipment).all()
+    return (
+        db.query(Equipment)
+        .order_by(Equipment.equipment_id)
+        .all()
+    )
 
 
 def get_equipment_by_id(
     db: Session,
     equipment_id: str
 ):
-
     return (
         db.query(Equipment)
         .filter(
@@ -27,7 +29,6 @@ def get_available_equipment(
     equipment_type: str | None = None,
     location: str | None = None
 ):
-
     query = (
         db.query(Equipment)
         .filter(
@@ -45,4 +46,8 @@ def get_available_equipment(
             Equipment.location == location
         )
 
-    return query.all()
+    return (
+        query
+        .order_by(Equipment.equipment_id)
+        .all()
+    )
