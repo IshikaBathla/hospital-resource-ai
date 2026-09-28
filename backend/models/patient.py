@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer
+from sqlalchemy import Column, String, Integer, DateTime
 
 from backend.database import Base
 
@@ -30,4 +30,14 @@ class Patient(Base):
     status = Column(
         String(30),
         nullable=False
+    )
+
+    waiting_since = Column(
+        DateTime,
+        nullable=True
+    )
+
+    required_equipment_type = Column(
+        String(50),
+        nullable=True
     )

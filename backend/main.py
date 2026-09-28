@@ -40,6 +40,7 @@ from backend.services.background_service import (
 
 from backend.routers.simulation import router as simulation_router
 
+from backend.routers.optimization import router as optimization_router
 # =========================================================
 # APPLICATION LIFESPAN
 # =========================================================
@@ -132,6 +133,7 @@ app.include_router(
 )
 
 app.include_router(simulation_router)
+app.include_router(optimization_router)
 # =========================================================
 # HEALTH CHECK
 # =========================================================
