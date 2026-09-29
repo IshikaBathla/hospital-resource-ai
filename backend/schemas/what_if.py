@@ -17,4 +17,4 @@ class WhatIfScenario(BaseModel):
     unavailable_general_staff: int = Field(default=0, ge=0)
 
     additional_icu_staff: int = Field(default=0, ge=0)
-additional_general_staff: int = Field(default=0, ge=0)
+    additional_general_staff: int = Field(default=0, ge=0)
