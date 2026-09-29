@@ -3,13 +3,15 @@ from sqlalchemy.orm import Session
 from backend.models.bed import Bed
 from backend.models.patient import Patient
 from backend.models.staff import Staff
+from backend.models.equipment import Equipment
 
 from backend.services.what_if_optimization_service import (
     optimize_simulated_reallocation
 )
 
 from backend.services.optimization_service import (
-    optimize_staff_allocation
+    optimize_staff_allocation,
+    optimize_equipment_allocation
 )
 
 
@@ -226,7 +228,8 @@ def run_what_if_simulation(
     unavailable_icu_staff: int = 0,
     unavailable_general_staff: int = 0,
     additional_icu_staff: int = 0,
-    additional_general_staff: int = 0
+    additional_general_staff: int = 0,
+    equipment_requirements: dict | None = None
 ):
 
     # =====================================================
@@ -376,6 +379,29 @@ def run_what_if_simulation(
     initial_staff_capacity = calculate_staff_capacity(simulated_staff)
 
     # =====================================================
+    # 5B. SIMULATED EQUIPMENT STATE
+    # =====================================================
+
+    # Copy the current equipment state into memory.
+    # This is used only by the What-If simulation.
+    # The real database is never modified.
+    equipment = (
+        db.query(Equipment)
+        .order_by(Equipment.equipment_id)
+        .all()
+    )
+
+    simulated_equipment = []
+
+    for item in equipment:
+        simulated_equipment.append({
+            "equipment_id": item.equipment_id,
+            "equipment_type": item.equipment_type,
+            "status": item.status,
+            "location": item.location
+        })
+
+    # =====================================================
     # 6. DEMAND
     # =====================================================
 
@@ -463,6 +489,8 @@ def run_what_if_simulation(
     # 8. CREATE SIMULATED PATIENTS
     # =====================================================
 
+    equipment_requirements = equipment_requirements or {}
+
     simulated_patients = []
 
     patient_counter = 1
@@ -494,6 +522,21 @@ def run_what_if_simulation(
 
         for _ in range(count):
 
+            required_equipment_type = None
+
+            # Explicitly map equipment demand from the scenario.
+            # We do not infer equipment requirements from priority.
+            for equipment_type, required_count in equipment_requirements.items():
+                assigned_count = sum(
+                    1
+                    for existing_patient in simulated_patients
+                    if existing_patient.get("required_equipment_type") == equipment_type
+                )
+
+                if assigned_count < required_count:
+                    required_equipment_type = equipment_type
+                    break
+
             simulated_patients.append({
 
                 "patient_id":
@@ -510,13 +553,130 @@ def run_what_if_simulation(
                     ),
 
                 "current_bed_id":
-                    None
+                    None,
+
+                "required_equipment_type":
+                    required_equipment_type
             })
 
             patient_counter += 1
 
     # =====================================================
-    # 8A. STAFF OPTIMIZATION
+    # 8A. EQUIPMENT OPTIMIZATION
+    # =====================================================
+    # Use the existing OR-Tools equipment optimizer on the
+    # simulated equipment state. No database rows are changed.
+    # =====================================================
+
+    equipment_patients = [
+        {
+            "patient_id": patient["patient_id"],
+            "emergency_level": patient["emergency_level"],
+            "required_equipment_type": patient.get("required_equipment_type"),
+            "location": patient["department"]
+        }
+        for patient in simulated_patients
+        if patient.get("required_equipment_type")
+    ]
+
+    available_simulated_equipment = [
+        item.copy()
+        for item in simulated_equipment
+        if item["status"].lower() == "available"
+    ]
+
+    if not equipment_patients:
+        equipment_optimization = {
+            "status": "not_required",
+            "objective_value": 0,
+            "allocations": []
+        }
+    elif not available_simulated_equipment:
+        equipment_optimization = {
+            "status": "no_available_equipment",
+            "objective_value": 0,
+            "allocations": []
+        }
+    else:
+        equipment_optimization = optimize_equipment_allocation(
+            patients=equipment_patients,
+            equipment=available_simulated_equipment
+        )
+
+    equipment_allocation_map = {
+        allocation["patient_id"]: allocation
+        for allocation in equipment_optimization.get("allocations", [])
+    }
+
+    equipment_recommendations = []
+
+    for patient in equipment_patients:
+        patient_id = patient["patient_id"]
+        required_type = patient["required_equipment_type"]
+        allocation = equipment_allocation_map.get(patient_id)
+
+        if allocation:
+            equipment_id = allocation["equipment_id"]
+
+            for simulated_item in simulated_equipment:
+                if simulated_item["equipment_id"] == equipment_id:
+                    simulated_item["status"] = "simulated_assigned"
+                    break
+
+            equipment_recommendations.append({
+                "patient_id": patient_id,
+                "emergency_level": patient["emergency_level"],
+                "department": patient["location"],
+                "required_equipment_type": required_type,
+                "recommended_action": "assign_equipment",
+                "recommended_equipment_id": equipment_id,
+                "equipment_location": allocation.get("location"),
+                "reason": (
+                    f"OR-Tools selected equipment {equipment_id} "
+                    f"for patient {patient_id} because its type "
+                    f"matches the required {required_type} equipment "
+                    "and the equipment is compatible with the simulated location."
+                ),
+                "constraints": [
+                    "Equipment type must match the patient requirement.",
+                    "Equipment must be available in the simulated state.",
+                    "One equipment unit can be assigned to only one simulated patient.",
+                    "Equipment location must match the patient location when both are known."
+                ],
+                "expected_impact": (
+                    f"{equipment_id} is reserved for {patient_id} "
+                    f"in the simulated {patient['location']} state."
+                ),
+                "human_decision_required": True
+            })
+        else:
+            equipment_recommendations.append({
+                "patient_id": patient_id,
+                "emergency_level": patient["emergency_level"],
+                "department": patient["location"],
+                "required_equipment_type": required_type,
+                "recommended_action": "equipment_required",
+                "recommended_equipment_id": None,
+                "equipment_location": None,
+                "reason": (
+                    f"No compatible available {required_type} equipment "
+                    f"was found for patient {patient_id} in the simulated state."
+                ),
+                "constraints": [
+                    "Equipment type must match the patient requirement.",
+                    "Equipment must be available in the simulated state.",
+                    "One equipment unit can be assigned to only one simulated patient.",
+                    "Equipment location must match the patient location when both are known."
+                ],
+                "expected_impact": (
+                    f"Additional {required_type} capacity or another feasible "
+                    "operational action is required."
+                ),
+                "human_decision_required": True
+            })
+
+    # =====================================================
+    # 8B. STAFF OPTIMIZATION
     # =====================================================
     #
     # The existing greedy assign_simulated_staff() logic is
@@ -1440,13 +1600,19 @@ def run_what_if_simulation(
                 additional_icu_staff,
 
             "additional_general_staff":
-                additional_general_staff
+                additional_general_staff,
+
+            "equipment_requirements":
+                equipment_requirements
         },
 
         "simulated_beds":
             simulated_beds,
 
         "simulated_staff": simulated_staff,
+
+        "simulated_equipment":
+            simulated_equipment,
 
         "initial_staff_capacity":
             initial_staff_capacity,
@@ -1456,6 +1622,12 @@ def run_what_if_simulation(
 
         "staff_recommendations":
             staff_recommendations,
+
+        "equipment_recommendations":
+            equipment_recommendations,
+
+        "equipment_optimization":
+            equipment_optimization,
 
         "staff_optimization": {
             "status": "success",

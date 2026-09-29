@@ -44,4 +44,6 @@ def simulate_scenario(
 
         additional_icu_staff=scenario.additional_icu_staff,
         additional_general_staff=scenario.additional_general_staff,
+
+        equipment_requirements=scenario.equipment_requirements,
     )

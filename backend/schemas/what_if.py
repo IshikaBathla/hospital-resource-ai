@@ -1,7 +1,9 @@
+from typing import Dict
 from pydantic import BaseModel, Field
 
 
 class WhatIfScenario(BaseModel):
+
     emergency_patients: int = Field(default=0, ge=0)
     high_priority_patients: int = Field(default=0, ge=0)
     medium_priority_patients: int = Field(default=0, ge=0)
@@ -18,3 +20,7 @@ class WhatIfScenario(BaseModel):
 
     additional_icu_staff: int = Field(default=0, ge=0)
     additional_general_staff: int = Field(default=0, ge=0)
+
+    equipment_requirements: Dict[str, int] = Field(
+        default_factory=dict
+    )
