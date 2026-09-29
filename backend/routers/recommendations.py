@@ -26,6 +26,9 @@ from backend.services.recommendation_service import (
     validate_pending_recommendations,
     get_resource_pressure
 )
+from backend.services.unified_recommendation_service import (
+    generate_unified_recommendation
+) 
 
 
 router = APIRouter(
@@ -954,6 +957,37 @@ def resource_pressure(
     db: Session = Depends(get_db)
 ):
     return get_resource_pressure(db)
+
+
+# =========================================================
+# UNIFIED RESOURCE RECOMMENDATION
+# =========================================================
+
+@router.post(
+    "/unified/{patient_id}"
+)
+def unified_recommendation(
+    patient_id: str,
+    db: Session = Depends(get_db)
+):
+    result = generate_unified_recommendation(
+        db,
+        patient_id
+    )
+
+    if result.get("status") == "error":
+        raise HTTPException(
+            status_code=404,
+            detail=result["message"]
+        )
+
+    if result.get("status") == "no_feasible_allocation":
+        raise HTTPException(
+            status_code=409,
+            detail=result["message"]
+        )
+
+    return result
 
 
 # =========================================================
