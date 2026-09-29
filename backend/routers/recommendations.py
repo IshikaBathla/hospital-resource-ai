@@ -23,7 +23,8 @@ from backend.schemas.recommendation import (
 from backend.services.recommendation_service import (
     generate_recommendation,
     save_recommendation,
-    validate_pending_recommendations
+    validate_pending_recommendations,
+    get_resource_pressure
 )
 
 
@@ -201,12 +202,14 @@ def approve_recommendation(
     )
 
     if not recommendation:
+
         raise HTTPException(
             status_code=404,
             detail="Recommendation not found"
         )
 
     if recommendation.status != "pending":
+
         raise HTTPException(
             status_code=400,
             detail=(
@@ -215,7 +218,50 @@ def approve_recommendation(
             )
         )
 
-    # Patient is always required.
+    # -----------------------------------------------------
+    # Validate recommended bed
+    # -----------------------------------------------------
+
+    if not recommendation.recommended_bed_id:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Recommendation does not contain "
+                "a bed allocation"
+            )
+        )
+
+    bed = (
+        db.query(Bed)
+        .filter(
+            Bed.bed_id
+            == recommendation.recommended_bed_id
+        )
+        .first()
+    )
+
+    if not bed:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Recommended bed not found"
+        )
+
+    if bed.status != "available":
+
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Bed {bed.bed_id} is no longer "
+                "available"
+            )
+        )
+
+    # -----------------------------------------------------
+    # Validate patient
+    # -----------------------------------------------------
+
     patient = (
         db.query(Patient)
         .filter(
@@ -226,41 +272,20 @@ def approve_recommendation(
     )
 
     if not patient:
+
         raise HTTPException(
             status_code=404,
             detail="Patient not found"
         )
 
-    # Bed is optional so equipment-only recommendations work.
-    bed = None
-    if recommendation.recommended_bed_id:
-        bed = (
-            db.query(Bed)
-            .filter(
-                Bed.bed_id
-                == recommendation.recommended_bed_id
-            )
-            .first()
-        )
+    # -----------------------------------------------------
+    # Validate recommended staff
+    # -----------------------------------------------------
 
-        if not bed:
-            raise HTTPException(
-                status_code=404,
-                detail="Recommended bed not found"
-            )
-
-        if bed.status != "available":
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    f"Bed {bed.bed_id} is no longer "
-                    "available"
-                )
-            )
-
-    # Staff is optional.
     staff = None
+
     if recommendation.recommended_staff_id:
+
         staff = (
             db.query(Staff)
             .filter(
@@ -271,12 +296,14 @@ def approve_recommendation(
         )
 
         if not staff:
+
             raise HTTPException(
                 status_code=404,
                 detail="Recommended staff not found"
             )
 
         if staff.status != "available":
+
             raise HTTPException(
                 status_code=409,
                 detail=(
@@ -285,9 +312,14 @@ def approve_recommendation(
                 )
             )
 
-    # Equipment is optional.
+    # -----------------------------------------------------
+    # Validate recommended equipment
+    # -----------------------------------------------------
+
     equipment = None
+
     if recommendation.recommended_equipment_id:
+
         equipment = (
             db.query(Equipment)
             .filter(
@@ -298,57 +330,89 @@ def approve_recommendation(
         )
 
         if not equipment:
+
             raise HTTPException(
                 status_code=404,
                 detail="Recommended equipment not found"
             )
 
         if equipment.status != "available":
+
             raise HTTPException(
                 status_code=409,
                 detail=(
-                    f"Equipment {equipment.equipment_id} "
+                    f"Equipment "
+                    f"{equipment.equipment_id} "
                     "is no longer available"
                 )
             )
 
-    # At least one resource must be present.
-    if not any([bed, staff, equipment]):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Recommendation does not contain "
-                "a resource allocation"
-            )
-        )
+    # -----------------------------------------------------
+    # Allocate bed
+    # -----------------------------------------------------
 
-    # Allocate bed when present.
-    if bed:
-        bed.status = "occupied"
-        bed.patient_id = patient.patient_id
-        bed.expected_release_at = None
-        patient.status = "admitted"
+    bed.status = "occupied"
 
-    # Allocate staff when present.
+    bed.patient_id = patient.patient_id
+
+    bed.expected_release_at = None
+
+    # -----------------------------------------------------
+    # Update patient
+    # -----------------------------------------------------
+
+    patient.status = "admitted"
+
+    # -----------------------------------------------------
+    # Allocate staff
+    # -----------------------------------------------------
+
     if staff:
+
         staff.status = "assigned"
 
-    # Allocate equipment when present.
+    # -----------------------------------------------------
+    # Allocate equipment
+    # -----------------------------------------------------
+
     if equipment:
+
         equipment.status = "assigned"
+
+    # -----------------------------------------------------
+    # Create assignment
+    # -----------------------------------------------------
 
     assignment = Assignment(
         patient_id=patient.patient_id,
-        bed_id=bed.bed_id if bed else None,
-        staff_id=staff.staff_id if staff else None,
-        equipment_id=equipment.equipment_id if equipment else None
+
+        bed_id=bed.bed_id,
+
+        staff_id=(
+            staff.staff_id
+            if staff
+            else None
+        ),
+
+        equipment_id=(
+            equipment.equipment_id
+            if equipment
+            else None
+        )
     )
 
     db.add(assignment)
+
+    # -----------------------------------------------------
+    # Update recommendation
+    # -----------------------------------------------------
+
     recommendation.status = "approved"
 
-    # Keep existing decision-history schema; bed can be NULL
-    # for equipment-only recommendations.
+    # -----------------------------------------------------
+    # Save decision history
+    # -----------------------------------------------------
+
     db.execute(
         text("""
             INSERT INTO recommendation_decisions
@@ -369,43 +433,88 @@ def approve_recommendation(
             )
         """),
         {
-            "patient_id": patient.patient_id,
-            "recommendation_id": recommendation_id,
-            "recommended_bed_id": bed.bed_id if bed else None,
-            "reason": recommendation.reason
+            "patient_id":
+                patient.patient_id,
+
+            "recommendation_id":
+                recommendation_id,
+
+            "recommended_bed_id":
+                bed.bed_id,
+
+            "reason":
+                recommendation.reason
         }
     )
 
     db.commit()
 
-    if bed:
-        db.refresh(bed)
-    if staff:
-        db.refresh(staff)
-    if equipment:
-        db.refresh(equipment)
-
+    db.refresh(bed)
     db.refresh(patient)
     db.refresh(assignment)
     db.refresh(recommendation)
 
+    if staff:
+        db.refresh(staff)
+
+    if equipment:
+        db.refresh(equipment)
+
     return {
         "status": "success",
-        "message": (
+
+        "message":
             "Recommendation approved and "
-            "resources allocated"
-        ),
-        "recommendation_id": recommendation.recommendation_id,
-        "patient_id": patient.patient_id,
-        "patient_status": patient.status,
-        "bed_id": bed.bed_id if bed else None,
-        "bed_status": bed.status if bed else None,
-        "staff_id": staff.staff_id if staff else None,
-        "staff_status": staff.status if staff else None,
-        "equipment_id": equipment.equipment_id if equipment else None,
-        "equipment_status": equipment.status if equipment else None,
-        "assignment_id": assignment.assignment_id,
-        "recommendation_status": recommendation.status
+            "resources allocated",
+
+        "recommendation_id":
+            recommendation.recommendation_id,
+
+        "patient_id":
+            patient.patient_id,
+
+        "patient_status":
+            patient.status,
+
+        "bed_id":
+            bed.bed_id,
+
+        "bed_status":
+            bed.status,
+
+        "staff_id":
+            (
+                staff.staff_id
+                if staff
+                else None
+            ),
+
+        "staff_status":
+            (
+                staff.status
+                if staff
+                else None
+            ),
+
+        "equipment_id":
+            (
+                equipment.equipment_id
+                if equipment
+                else None
+            ),
+
+        "equipment_status":
+            (
+                equipment.status
+                if equipment
+                else None
+            ),
+
+        "assignment_id":
+            assignment.assignment_id,
+
+        "recommendation_status":
+            recommendation.status
     }
 
 
@@ -828,6 +937,23 @@ def reject_recommendation(
         "recommendation_status":
             recommendation.status
     }
+
+
+# =========================================================
+# GET SINGLE RECOMMENDATION
+# =========================================================
+
+# =========================================================
+# ML RESOURCE PRESSURE
+# =========================================================
+
+@router.get(
+    "/resource-pressure"
+)
+def resource_pressure(
+    db: Session = Depends(get_db)
+):
+    return get_resource_pressure(db)
 
 
 # =========================================================

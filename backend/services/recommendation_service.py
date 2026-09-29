@@ -1,5 +1,7 @@
 from datetime import datetime
 
+import pandas as pd
+
 from sqlalchemy.orm import Session
 
 from backend.models.patient import Patient
@@ -14,6 +16,14 @@ from backend.services.constraint_service import (
 
 from backend.services.procedure_service import (
     refresh_expired_procedures
+)
+
+from backend.services.forecasting_service import (
+    load_patient_arrivals,
+    prepare_department_hourly_data,
+    train_department_forecast_models,
+    forecast_department_next_24_hours,
+    get_forecast_pressure
 )
 
 
@@ -251,6 +261,20 @@ def generate_recommendation(
         patient.emergency_level.lower()
     )
 
+    # -----------------------------------------------------
+    # ML forecast pressure
+    # -----------------------------------------------------
+
+    icu_pressure = get_department_pressure(
+        db,
+        "ICU"
+    )
+
+    general_pressure = get_department_pressure(
+        db,
+        "General"
+    )
+
     # =====================================================
     # CRITICAL / HIGH PRIORITY
     # =====================================================
@@ -308,6 +332,13 @@ def generate_recommendation(
 
                 "reason": (
                     "An ICU bed is currently available."
+                    + (
+                        f" Forecast indicates ICU pressure with "
+                        f"{icu_pressure['predicted_24h_arrivals']} "
+                        f"predicted arrivals over the next 24 hours."
+                        if icu_pressure
+                        else ""
+                    )
                 ),
 
                 "expected_wait_minutes": 0
@@ -372,6 +403,13 @@ def generate_recommendation(
                     "No ICU bed is currently available, "
                     "but an ICU bed is expected to be "
                     "released."
+                    + (
+                        f" ML forecast indicates ICU pressure with "
+                        f"{icu_pressure['predicted_24h_arrivals']} "
+                        f"predicted arrivals over the next 24 hours."
+                        if icu_pressure
+                        else ""
+                    )
                 ),
 
                 "expected_wait_minutes":
@@ -448,6 +486,13 @@ def generate_recommendation(
                         "No ICU bed is currently available. "
                         "A feasible patient reallocation "
                         "can create ICU capacity."
+                        + (
+                            f" ML forecast indicates ICU pressure with "
+                            f"{icu_pressure['predicted_24h_arrivals']} "
+                            f"predicted arrivals over the next 24 hours."
+                            if icu_pressure
+                            else ""
+                        )
                     ),
 
                     "expected_wait_minutes": 0
@@ -505,6 +550,12 @@ def generate_recommendation(
                     "No ICU capacity is currently "
                     "available, so a General ward bed "
                     "is recommended as a fallback."
+                    + (
+                        f" ICU forecast pressure is "
+                        f"{icu_pressure['status']}."
+                        if icu_pressure
+                        else ""
+                    )
                 ),
 
                 "expected_wait_minutes": 0
@@ -959,3 +1010,84 @@ def validate_pending_recommendations(
         "stale_recommendation_ids":
             stale_ids
     }
+
+# =========================================================
+# ML RESOURCE PRESSURE
+# =========================================================
+
+def get_resource_pressure(
+    db: Session
+):
+    """
+    Generate ML-based resource pressure signals.
+
+    ML predicts future demand.
+    It does not directly allocate resources.
+    Existing recommendation and constraint logic
+    remains responsible for actual allocation.
+    """
+
+    arrival_df = load_patient_arrivals(db)
+
+    if arrival_df.empty:
+        return {
+            "status": "no_data",
+            "pressure": []
+        }
+
+    department_hourly = prepare_department_hourly_data(
+        arrival_df
+    )
+
+    if department_hourly.empty:
+        return {
+            "status": "no_data",
+            "pressure": []
+        }
+
+    models = train_department_forecast_models(
+        department_hourly
+    )
+
+    if not models:
+        return {
+            "status": "no_models",
+            "pressure": []
+        }
+
+    last_timestamp = arrival_df["arrival_time"].max()
+
+    department_forecast = forecast_department_next_24_hours(
+        models,
+        last_timestamp + pd.Timedelta(hours=1)
+    )
+
+    pressure = get_forecast_pressure(
+        db,
+        department_forecast
+    )
+
+    return {
+        "status": "success",
+        "pressure": pressure
+    }
+
+
+def get_department_pressure(
+    db: Session,
+    department: str
+):
+    """
+    Return ML forecast pressure for one department.
+    """
+
+    result = get_resource_pressure(db)
+
+    if result["status"] != "success":
+        return None
+
+    for item in result["pressure"]:
+        if item["department"].lower() == department.lower():
+            return item
+
+    return None

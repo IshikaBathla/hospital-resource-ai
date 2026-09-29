@@ -479,7 +479,16 @@ def optimize_staff_allocation(patients, staff):
                             staff_member["role"],
 
                         "department":
-                            staff_member["department"]
+                            staff_member["department"],
+
+                        "score": objective.GetCoefficient(
+                            x[
+                                (
+                                    patient["patient_id"],
+                                    staff_member["staff_id"]
+                                )
+                            ]
+                        )
                     }
                 )
 

@@ -18,6 +18,11 @@ from backend.services.equipment_service import (
     get_available_equipment
 )
 
+from backend.services.optimization_service import (
+    optimize_current_equipment_state,
+    generate_optimized_equipment_recommendation
+)
+
 
 router = APIRouter(
     prefix="/equipment",
@@ -51,6 +56,26 @@ def get_available(
         equipment_type,
         location
     )
+
+
+@router.get(
+    "/optimize"
+)
+def optimize_equipment(
+    db: Session = Depends(get_db)
+):
+
+    return optimize_current_equipment_state(db)
+
+
+@router.post(
+    "/recommend"
+)
+def recommend_equipment(
+    db: Session = Depends(get_db)
+):
+
+    return generate_optimized_equipment_recommendation(db)
 
 
 @router.get(

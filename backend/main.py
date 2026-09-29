@@ -41,6 +41,14 @@ from backend.services.background_service import (
 from backend.routers.simulation import router as simulation_router
 
 from backend.routers.optimization import router as optimization_router
+
+from backend.routers import forecasting
+
+from backend.models.recommendation_outcome import RecommendationOutcome
+
+from backend.routers import outcomes
+
+from backend.routers import what_if
 # =========================================================
 # APPLICATION LIFESPAN
 # =========================================================
@@ -134,6 +142,13 @@ app.include_router(
 
 app.include_router(simulation_router)
 app.include_router(optimization_router)
+app.include_router(forecasting.router)
+app.include_router(
+    outcomes.router
+)
+app.include_router(
+    what_if.router
+)
 # =========================================================
 # HEALTH CHECK
 # =========================================================
