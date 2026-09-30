@@ -49,6 +49,8 @@ from backend.models.recommendation_outcome import RecommendationOutcome
 from backend.routers import outcomes
 
 from backend.routers import what_if
+
+from backend.routers.strategy import router as strategy_router
 # =========================================================
 # APPLICATION LIFESPAN
 # =========================================================
@@ -149,6 +151,7 @@ app.include_router(
 app.include_router(
     what_if.router
 )
+app.include_router(strategy_router)
 # =========================================================
 # HEALTH CHECK
 # =========================================================

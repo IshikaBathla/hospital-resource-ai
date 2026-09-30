@@ -213,8 +213,9 @@ def build_unified_recommendations(
     staff_recommendations,
     equipment_recommendations
 ):
-    """Combine bed, staff and equipment results into one
-    patient-level operational recommendation.
+    """
+    Combine bed, staff and equipment recommendations
+    into one patient-level operational recommendation.
 
     This function only combines simulation results.
     It does not modify the database.
@@ -235,33 +236,54 @@ def build_unified_recommendations(
         staff = staff_map.get(patient_id)
         equipment = equipment_map.get(patient_id)
 
+        bed_action = bed.get("recommended_action") if bed else None
+        staff_action = staff.get("recommended_action") if staff else None
+        equipment_action = equipment.get("recommended_action") if equipment else None
+
         primary_bottleneck = None
 
-        if bed and bed.get("recommended_action") == "reallocation_required":
+        if bed_action == "reallocation_required":
             primary_bottleneck = f"{department} bed capacity"
-        elif staff and staff.get("recommended_action") == "staff_required":
+        elif staff_action == "staff_required":
             primary_bottleneck = f"{department} staff capacity"
-        elif equipment and equipment.get("recommended_action") == "equipment_required":
+        elif equipment_action == "equipment_required":
             primary_bottleneck = "Equipment capacity"
 
-        overall_action = bed.get("recommended_action", "no_action") if bed else "no_action"
+        if bed_action == "reallocation_required":
+            overall_action = "reallocation_required"
+        elif bed_action == "staff_required":
+            overall_action = "staff_required"
+        elif staff_action == "staff_required":
+            overall_action = "allocate_with_staff_required"
+        elif equipment_action == "equipment_required":
+            overall_action = "allocate_with_equipment_required"
+        elif (
+            bed_action == "allocate"
+            and staff_action in ("assign_staff", None)
+            and equipment_action in ("assign_equipment", None)
+        ):
+            overall_action = "fully_allocated"
+        elif bed_action == "allocate":
+            overall_action = "allocate"
+        else:
+            overall_action = "resource_shortage"
 
         bed_summary = {
             "status": "allocated" if bed and bed.get("recommended_bed_id") else "unavailable",
             "recommended_bed_id": bed.get("recommended_bed_id") if bed else None,
-            "action": bed.get("recommended_action") if bed else None
+            "action": bed_action
         }
 
         staff_summary = {
             "status": "allocated" if staff and staff.get("recommended_staff_id") else "unavailable",
             "recommended_staff_id": staff.get("recommended_staff_id") if staff else None,
-            "action": staff.get("recommended_action") if staff else None
+            "action": staff_action
         }
 
         equipment_summary = {
             "status": "allocated" if equipment and equipment.get("recommended_equipment_id") else "unavailable",
             "recommended_equipment_id": equipment.get("recommended_equipment_id") if equipment else None,
-            "action": equipment.get("recommended_action") if equipment else None
+            "action": equipment_action
         }
 
         reasons = []
@@ -293,7 +315,6 @@ def build_unified_recommendations(
     return unified_recommendations
 
 
-# =========================================================
 # MAIN WHAT-IF SIMULATION
 # =========================================================
 
