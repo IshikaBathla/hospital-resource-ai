@@ -204,6 +204,96 @@ def assign_simulated_staff(simulated_staff, simulated_patients):
     return recommendations
 
 # =========================================================
+# BUILD UNIFIED PATIENT-LEVEL RECOMMENDATIONS
+# =========================================================
+
+def build_unified_recommendations(
+    simulated_patients,
+    personalized_recommendations,
+    staff_recommendations,
+    equipment_recommendations
+):
+    """Combine bed, staff and equipment results into one
+    patient-level operational recommendation.
+
+    This function only combines simulation results.
+    It does not modify the database.
+    """
+
+    bed_map = {r["patient_id"]: r for r in personalized_recommendations}
+    staff_map = {r["patient_id"]: r for r in staff_recommendations}
+    equipment_map = {r["patient_id"]: r for r in equipment_recommendations}
+
+    unified_recommendations = []
+
+    for patient in simulated_patients:
+        patient_id = patient["patient_id"]
+        emergency_level = patient["emergency_level"]
+        department = patient["department"]
+
+        bed = bed_map.get(patient_id)
+        staff = staff_map.get(patient_id)
+        equipment = equipment_map.get(patient_id)
+
+        primary_bottleneck = None
+
+        if bed and bed.get("recommended_action") == "reallocation_required":
+            primary_bottleneck = f"{department} bed capacity"
+        elif staff and staff.get("recommended_action") == "staff_required":
+            primary_bottleneck = f"{department} staff capacity"
+        elif equipment and equipment.get("recommended_action") == "equipment_required":
+            primary_bottleneck = "Equipment capacity"
+
+        overall_action = bed.get("recommended_action", "no_action") if bed else "no_action"
+
+        bed_summary = {
+            "status": "allocated" if bed and bed.get("recommended_bed_id") else "unavailable",
+            "recommended_bed_id": bed.get("recommended_bed_id") if bed else None,
+            "action": bed.get("recommended_action") if bed else None
+        }
+
+        staff_summary = {
+            "status": "allocated" if staff and staff.get("recommended_staff_id") else "unavailable",
+            "recommended_staff_id": staff.get("recommended_staff_id") if staff else None,
+            "action": staff.get("recommended_action") if staff else None
+        }
+
+        equipment_summary = {
+            "status": "allocated" if equipment and equipment.get("recommended_equipment_id") else "unavailable",
+            "recommended_equipment_id": equipment.get("recommended_equipment_id") if equipment else None,
+            "action": equipment.get("recommended_action") if equipment else None
+        }
+
+        reasons = []
+        for label, recommendation in (("Bed", bed), ("Staff", staff), ("Equipment", equipment)):
+            if recommendation and recommendation.get("reason"):
+                reasons.append(f"{label}: {recommendation['reason']}")
+
+        impacts = []
+        for label, recommendation in (("Bed", bed), ("Staff", staff), ("Equipment", equipment)):
+            if recommendation and recommendation.get("expected_impact"):
+                impacts.append(f"{label}: {recommendation['expected_impact']}")
+
+        unified_recommendations.append({
+            "patient_id": patient_id,
+            "emergency_level": emergency_level,
+            "department": department,
+            "resources": {
+                "bed": bed_summary,
+                "staff": staff_summary,
+                "equipment": equipment_summary
+            },
+            "primary_bottleneck": primary_bottleneck,
+            "recommended_action": overall_action,
+            "reason": " ".join(reasons),
+            "expected_impact": " ".join(impacts),
+            "human_decision_required": True
+        })
+
+    return unified_recommendations
+
+
+# =========================================================
 # MAIN WHAT-IF SIMULATION
 # =========================================================
 
@@ -1557,7 +1647,18 @@ def run_what_if_simulation(
     )
 
     # =====================================================
-    # 18. FINAL RESPONSE
+    # 18. UNIFIED PATIENT-LEVEL RECOMMENDATIONS
+    # =====================================================
+
+    unified_recommendations = build_unified_recommendations(
+        simulated_patients=simulated_patients,
+        personalized_recommendations=personalized_recommendations,
+        staff_recommendations=staff_recommendations,
+        equipment_recommendations=equipment_recommendations
+    )
+
+    # =====================================================
+    # 19. FINAL RESPONSE
     # =====================================================
 
     return {
@@ -1666,6 +1767,9 @@ def run_what_if_simulation(
 
         "personalized_recommendations":
             personalized_recommendations,
+
+        "unified_recommendations":
+            unified_recommendations,
 
         "optimization":
             optimization_result,
