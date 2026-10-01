@@ -144,3 +144,20 @@ def initialize_database():
                 ADD COLUMN IF NOT EXISTS modified_equipment_id VARCHAR(20)
             """)
         )
+        # ----------------------------------
+        # USERS / AUTHENTICATION
+        # ----------------------------------
+
+        connection.execute(
+            text("""
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id VARCHAR(20) PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    email VARCHAR(150) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    role VARCHAR(30) NOT NULL DEFAULT 'VIEWER',
+                    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        )
