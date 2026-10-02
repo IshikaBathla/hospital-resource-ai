@@ -1,20 +1,38 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status
+)
+
+from fastapi.security import (
+    HTTPBearer,
+    HTTPAuthorizationCredentials
+)
+
 from sqlalchemy.orm import Session
+
 import jwt
 
 from backend.database import get_db
+
 from backend.schemas.auth import (
     UserRegister,
     UserLogin,
     UserResponse,
-    TokenResponse
+    TokenResponse,
+    VerifyOTPRequest,
+    ResendOTPRequest
 )
+
 from backend.services.auth_service import (
     create_user,
     authenticate_user,
-    get_user_by_id
+    get_user_by_id,
+    verify_email_otp,
+    generate_new_otp
 )
+
 from backend.utils.security import (
     create_access_token,
     JWT_SECRET_KEY,
@@ -22,21 +40,14 @@ from backend.utils.security import (
 )
 
 
-# ==========================================
-# ROUTER CONFIGURATION
-# ==========================================
-
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
 )
 
+
 security = HTTPBearer()
 
-
-# ==========================================
-# REGISTER
-# ==========================================
 
 @router.post(
     "/register",
@@ -47,24 +58,73 @@ def register(
     db: Session = Depends(get_db)
 ):
 
-    user, error = create_user(
+    user, otp, error = create_user(
         db,
         user_data
     )
 
     if error:
-
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error
         )
 
+    # DEVELOPMENT ONLY:
+    # OTP is returned so that we can test
+    # without configuring an email provider.
     return user
 
 
-# ==========================================
-# LOGIN
-# ==========================================
+@router.post("/verify-email")
+def verify_email(
+    data: VerifyOTPRequest,
+    db: Session = Depends(get_db)
+):
+
+    user, error = verify_email_otp(
+        db,
+        data.email,
+        data.otp
+    )
+
+    if error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error
+        )
+
+    return {
+        "message": "Email verified successfully",
+        "user_id": user.user_id,
+        "email": user.email,
+        "email_verified": user.email_verified
+    }
+
+
+@router.post("/resend-otp")
+def resend_otp(
+    data: ResendOTPRequest,
+    db: Session = Depends(get_db)
+):
+
+    user, otp, error = generate_new_otp(
+        db,
+        data.email
+    )
+
+    if error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error
+        )
+
+    # DEVELOPMENT ONLY
+    return {
+        "message": "OTP generated successfully",
+        "email": user.email,
+        "otp": otp
+    }
+
 
 @router.post(
     "/login",
@@ -75,17 +135,16 @@ def login(
     db: Session = Depends(get_db)
 ):
 
-    user = authenticate_user(
+    user, error = authenticate_user(
         db,
         login_data.email,
         login_data.password
     )
 
-    if not user:
-
+    if error:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            detail=error
         )
 
     token = create_access_token(
@@ -100,10 +159,6 @@ def login(
     }
 
 
-# ==========================================
-# GET CURRENT USER
-# ==========================================
-
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(
         security
@@ -111,27 +166,7 @@ def get_current_user(
     db: Session = Depends(get_db)
 ):
 
-    # --------------------------------------
-    # GET TOKEN
-    # --------------------------------------
-
     token = credentials.credentials
-
-    print(
-        "AUTH HEADER RECEIVED:",
-        credentials.scheme
-    )
-
-    print(
-        "TOKEN RECEIVED:",
-        token[:20] + "..."
-        if token
-        else "EMPTY"
-    )
-
-    # --------------------------------------
-    # DECODE JWT
-    # --------------------------------------
 
     try:
 
@@ -141,54 +176,27 @@ def get_current_user(
             algorithms=[JWT_ALGORITHM]
         )
 
-        print(
-            "JWT PAYLOAD:",
-            payload
-        )
-
         user_id = payload.get("sub")
 
         if not user_id:
-
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication token: user ID missing"
+                detail="Invalid authentication token"
             )
 
-    # --------------------------------------
-    # TOKEN EXPIRED
-    # --------------------------------------
-
     except jwt.ExpiredSignatureError:
-
-        print(
-            "JWT ERROR: Token has expired"
-        )
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication token has expired"
         )
 
-    # --------------------------------------
-    # INVALID TOKEN
-    # --------------------------------------
-
-    except jwt.InvalidTokenError as e:
-
-        print(
-            "JWT ERROR:",
-            str(e)
-        )
+    except jwt.InvalidTokenError:
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid authentication token: {str(e)}"
+            detail="Invalid authentication token"
         )
-
-    # --------------------------------------
-    # FIND USER
-    # --------------------------------------
 
     user = get_user_by_id(
         db,
@@ -202,10 +210,6 @@ def get_current_user(
             detail="User not found"
         )
 
-    # --------------------------------------
-    # CHECK ACTIVE STATUS
-    # --------------------------------------
-
     if not user.is_active:
 
         raise HTTPException(
@@ -216,9 +220,35 @@ def get_current_user(
     return user
 
 
-# ==========================================
-# CURRENT USER ENDPOINT
-# ==========================================
+def require_roles(*allowed_roles):
+
+    def role_checker(
+        current_user=Depends(
+            get_current_user
+        )
+    ):
+
+        user_role = current_user.role.upper()
+
+        normalized_roles = {
+            role.upper()
+            for role in allowed_roles
+        }
+
+        if user_role not in normalized_roles:
+
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "You do not have permission "
+                    "to perform this action"
+                )
+            )
+
+        return current_user
+
+    return role_checker
+
 
 @router.get(
     "/me",
@@ -231,3 +261,17 @@ def get_me(
 ):
 
     return current_user
+
+
+@router.get("/admin-test")
+def admin_test(
+    current_user=Depends(
+        require_roles("ADMIN")
+    )
+):
+
+    return {
+        "message": "Admin access granted",
+        "user_id": current_user.user_id,
+        "role": current_user.role
+    }

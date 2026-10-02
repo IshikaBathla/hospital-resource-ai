@@ -83,3 +83,34 @@ def add_patient(
         db,
         patient_data
     )
+@router.delete("/{patient_id}")
+def delete_patient(
+    patient_id: str,
+    db: Session = Depends(get_db)
+):
+    patient = (
+        db.query(Patient)
+        .filter(Patient.patient_id == patient_id)
+        .first()
+    )
+
+    if not patient:
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    # Safety: admitted patients should not be deleted.
+    if patient.status.lower() == "admitted":
+        raise HTTPException(
+            status_code=400,
+            detail="Admitted patient cannot be deleted"
+        )
+
+    db.delete(patient)
+    db.commit()
+
+    return {
+        "message": "Patient deleted successfully",
+        "patient_id": patient_id
+    }

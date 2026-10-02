@@ -2,10 +2,6 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
-# ==========================================
-# DATABASE CONNECTION
-# ==========================================
-
 DATABASE_URL = "postgresql+psycopg://postgres:Rmikn%401117@localhost:5432/hospital_db"
 
 
@@ -24,12 +20,7 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 
-# ==========================================
-# DATABASE SESSION
-# ==========================================
-
 def get_db():
-
     db = SessionLocal()
 
     try:
@@ -39,17 +30,13 @@ def get_db():
         db.close()
 
 
-# ==========================================
-# DATABASE INITIALIZATION
-# ==========================================
-
 def initialize_database():
 
     with engine.begin() as connection:
 
-        # ----------------------------------
-        # BED AVAILABILITY
-        # ----------------------------------
+        # -------------------------------------------------
+        # BEDS
+        # -------------------------------------------------
 
         connection.execute(
             text("""
@@ -58,9 +45,10 @@ def initialize_database():
             """)
         )
 
-        # ----------------------------------
+
+        # -------------------------------------------------
         # PROCEDURES
-        # ----------------------------------
+        # -------------------------------------------------
 
         connection.execute(
             text("""
@@ -77,9 +65,10 @@ def initialize_database():
             """)
         )
 
-        # ----------------------------------
+
+        # -------------------------------------------------
         # RECOMMENDATIONS
-        # ----------------------------------
+        # -------------------------------------------------
 
         connection.execute(
             text("""
@@ -98,9 +87,10 @@ def initialize_database():
             """)
         )
 
-        # ----------------------------------
+
+        # -------------------------------------------------
         # RECOMMENDATION DECISIONS
-        # ----------------------------------
+        # -------------------------------------------------
 
         connection.execute(
             text("""
@@ -120,9 +110,10 @@ def initialize_database():
             """)
         )
 
-        # ----------------------------------
-        # EXISTING TABLE UPDATES
-        # ----------------------------------
+
+        # -------------------------------------------------
+        # EXISTING COLUMN MIGRATIONS
+        # -------------------------------------------------
 
         connection.execute(
             text("""
@@ -131,6 +122,7 @@ def initialize_database():
             """)
         )
 
+
         connection.execute(
             text("""
                 ALTER TABLE recommendation_decisions
@@ -138,15 +130,18 @@ def initialize_database():
             """)
         )
 
+
         connection.execute(
             text("""
                 ALTER TABLE recommendation_decisions
                 ADD COLUMN IF NOT EXISTS modified_equipment_id VARCHAR(20)
             """)
         )
-        # ----------------------------------
-        # USERS / AUTHENTICATION
-        # ----------------------------------
+
+
+        # -------------------------------------------------
+        # USERS
+        # -------------------------------------------------
 
         connection.execute(
             text("""
@@ -159,5 +154,43 @@ def initialize_database():
                     is_active BOOLEAN NOT NULL DEFAULT TRUE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
+            """)
+        )
+
+
+        # -------------------------------------------------
+        # AUTHENTICATION / EMAIL OTP
+        # -------------------------------------------------
+
+        connection.execute(
+            text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS email_verified BOOLEAN
+                NOT NULL DEFAULT FALSE
+            """)
+        )
+
+
+        connection.execute(
+            text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS otp_hash VARCHAR(255)
+            """)
+        )
+
+
+        connection.execute(
+            text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS otp_expires_at TIMESTAMP
+            """)
+        )
+
+
+        connection.execute(
+            text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS otp_attempts VARCHAR(10)
+                NOT NULL DEFAULT '0'
             """)
         )
