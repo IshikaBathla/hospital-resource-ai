@@ -16,9 +16,7 @@ from backend.models.assignment import Assignment
 from backend.models.staff import Staff
 from backend.models.equipment import Equipment
 
-from backend.schemas.recommendation import (
-    RecommendationAction
-)
+from backend.schemas.recommendation import RecommendationAction
 
 from backend.services.recommendation_service import (
     generate_recommendation,
@@ -26,9 +24,15 @@ from backend.services.recommendation_service import (
     validate_pending_recommendations,
     get_resource_pressure
 )
+
 from backend.services.unified_recommendation_service import (
     generate_unified_recommendation
-) 
+)
+
+from backend.utils.dependencies import (
+    get_current_user,
+    require_roles
+)
 
 
 router = APIRouter(
@@ -46,7 +50,8 @@ router = APIRouter(
 )
 def get_patient_recommendation(
     patient_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     recommendation_data = generate_recommendation(
@@ -118,7 +123,10 @@ def get_patient_recommendation(
     "/validate-pending"
 )
 def validate_recommendations(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles("ADMIN", "COORDINATOR")
+    )
 ):
 
     return validate_pending_recommendations(
@@ -134,7 +142,8 @@ def validate_recommendations(
     "/pending"
 )
 def get_pending_recommendations(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     recommendations = (
@@ -192,7 +201,10 @@ def get_pending_recommendations(
 )
 def approve_recommendation(
     recommendation_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles("ADMIN", "COORDINATOR")
+    )
 ):
 
     recommendation = (
@@ -531,7 +543,10 @@ def approve_recommendation(
 def modify_recommendation(
     recommendation_id: int,
     action: RecommendationAction,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles("ADMIN", "COORDINATOR")
+    )
 ):
 
     recommendation = (
@@ -677,7 +692,7 @@ def modify_recommendation(
             raise HTTPException(
                 status_code=409,
                 detail=(
-                    f"Equipment "
+                    f"Modified equipment "
                     f"{modified_equipment.equipment_id} "
                     "is not available"
                 )
@@ -859,7 +874,10 @@ def modify_recommendation(
 )
 def reject_recommendation(
     recommendation_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles("ADMIN", "COORDINATOR")
+    )
 ):
 
     recommendation = (
@@ -946,6 +964,7 @@ def reject_recommendation(
 # GET SINGLE RECOMMENDATION
 # =========================================================
 
+
 # =========================================================
 # ML RESOURCE PRESSURE
 # =========================================================
@@ -954,8 +973,10 @@ def reject_recommendation(
     "/resource-pressure"
 )
 def resource_pressure(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
+
     return get_resource_pressure(db)
 
 
@@ -968,20 +989,24 @@ def resource_pressure(
 )
 def unified_recommendation(
     patient_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
+
     result = generate_unified_recommendation(
         db,
         patient_id
     )
 
     if result.get("status") == "error":
+
         raise HTTPException(
             status_code=404,
             detail=result["message"]
         )
 
     if result.get("status") == "no_feasible_allocation":
+
         raise HTTPException(
             status_code=409,
             detail=result["message"]
@@ -999,7 +1024,8 @@ def unified_recommendation(
 )
 def get_recommendation(
     recommendation_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     recommendation = (
@@ -1057,7 +1083,8 @@ def get_recommendation(
 )
 def get_decision_history(
     patient_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     decisions = db.execute(

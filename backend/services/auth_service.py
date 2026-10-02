@@ -53,7 +53,6 @@ def create_user(
     db: Session,
     user_data: UserRegister
 ):
-
     existing_user = get_user_by_email(
         db,
         user_data.email
@@ -62,10 +61,10 @@ def create_user(
     if existing_user:
         return None, None, "Email already registered"
 
-    role = user_data.role.upper()
-
-    if role not in VALID_ROLES:
-        return None, None, "Invalid role"
+    # Public registration can only create VIEWER accounts.
+    # Elevated roles must be assigned through
+    # an authorized admin workflow.
+    role = "VIEWER"
 
     user_count = db.query(User).count()
 
@@ -105,7 +104,6 @@ def verify_email_otp(
     email: str,
     otp: str
 ):
-
     user = get_user_by_email(
         db,
         email
@@ -120,7 +118,9 @@ def verify_email_otp(
     if not user.otp_hash:
         return None, "No OTP available"
 
-    attempts = int(user.otp_attempts or "0")
+    attempts = int(
+        user.otp_attempts or "0"
+    )
 
     if attempts >= MAX_OTP_ATTEMPTS:
         return None, "Maximum OTP attempts exceeded"
@@ -135,7 +135,6 @@ def verify_email_otp(
         otp,
         user.otp_hash
     ):
-
         user.otp_attempts = str(
             attempts + 1
         )
@@ -159,7 +158,6 @@ def generate_new_otp(
     db: Session,
     email: str
 ):
-
     user = get_user_by_email(
         db,
         email
@@ -195,7 +193,6 @@ def authenticate_user(
     email: str,
     password: str
 ):
-
     user = get_user_by_email(
         db,
         email

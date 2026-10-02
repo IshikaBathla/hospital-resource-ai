@@ -14,8 +14,6 @@ class UserRegister(BaseModel):
         max_length=128
     )
 
-    role: str = "VIEWER"
-
 
 class VerifyOTPRequest(BaseModel):
     email: EmailStr
