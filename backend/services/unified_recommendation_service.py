@@ -267,6 +267,176 @@ def generate_unified_recommendation(
                 "Review available beds that are not eligible under the current allocation constraints"
             )
 
+        # ---------------------------------------------------------
+        # INDEPENDENT STAFF FEASIBILITY
+        # ---------------------------------------------------------
+        # Staff assessment must not depend on a successful bed
+        # allocation. We first determine the patient's operational
+        # department using the same current allocation rule:
+        # Critical/High -> ICU, otherwise General.
+        target_department = (
+            "ICU"
+            if emergency_level in {"critical", "high"}
+            else "General"
+        )
+
+        available_staff = (
+            db.query(Staff)
+            .filter(Staff.status == "available")
+            .order_by(Staff.staff_id)
+            .all()
+        )
+
+        compatible_staff = [
+            {
+                "staff_id": staff.staff_id,
+                "name": staff.name,
+                "role": staff.role,
+                "department": staff.department
+            }
+            for staff in available_staff
+            if (staff.department or "").lower()
+            == target_department.lower()
+        ]
+
+        if compatible_staff:
+            staff_patient = {
+                "patient_id": patient.patient_id,
+                "emergency_level": patient.emergency_level,
+                "department": target_department
+            }
+
+            staff_result = optimize_staff_allocation(
+                patients=[staff_patient],
+                staff=compatible_staff
+            )
+        else:
+            staff_result = {
+                "status": "no_available_staff",
+                "objective_value": 0,
+                "allocations": []
+            }
+
+        staff_allocations = (
+            staff_result.get("allocations", [])
+            if staff_result.get("status") == "optimized"
+            else []
+        )
+
+        selected_staff_id = (
+            staff_allocations[0].get("staff_id")
+            if staff_allocations
+            else None
+        )
+
+        # ---------------------------------------------------------
+        # INDEPENDENT EQUIPMENT FEASIBILITY
+        # ---------------------------------------------------------
+        # Equipment assessment also runs independently of bed
+        # allocation. The target location is the patient's
+        # operational department.
+        equipment_result = {
+            "status": "not_required",
+            "objective_value": 0,
+            "allocations": []
+        }
+
+        selected_equipment_id = None
+
+        if patient.required_equipment_type:
+            available_equipment = (
+                db.query(Equipment)
+                .filter(
+                    Equipment.status == "available"
+                )
+                .order_by(Equipment.equipment_id)
+                .all()
+            )
+
+            if available_equipment:
+                equipment_data = [
+                    {
+                        "equipment_id": equipment.equipment_id,
+                        "equipment_type": equipment.equipment_type,
+                        "location": equipment.location
+                    }
+                    for equipment in available_equipment
+                ]
+
+                equipment_patient = {
+                    "patient_id": patient.patient_id,
+                    "emergency_level": patient.emergency_level,
+                    "required_equipment_type":
+                        patient.required_equipment_type,
+                    "location": target_department
+                }
+
+                equipment_result = (
+                    optimize_equipment_allocation(
+                        patients=[equipment_patient],
+                        equipment=equipment_data
+                    )
+                )
+            else:
+                equipment_result = {
+                    "status": "no_available_equipment",
+                    "objective_value": 0,
+                    "allocations": []
+                }
+
+            equipment_allocations = (
+                equipment_result.get("allocations", [])
+                if equipment_result.get("status") == "optimized"
+                else []
+            )
+
+            if equipment_allocations:
+                selected_equipment_id = (
+                    equipment_allocations[0].get("equipment_id")
+                )
+
+        # ---------------------------------------------------------
+        # COMBINED COORDINATION RESPONSE
+        # ---------------------------------------------------------
+        # No resource is allocated here. The response only reports
+        # the independent operational feasibility of each resource.
+        independent_resource_status = {
+            "bed": "blocked",
+            "staff": (
+                "feasible"
+                if selected_staff_id
+                else "blocked"
+            ),
+            "equipment": (
+                "not_required"
+                if not patient.required_equipment_type
+                else (
+                    "feasible"
+                    if selected_equipment_id
+                    else "blocked"
+                )
+            )
+        }
+
+        coordination_actions = list(recommended_actions)
+
+        if not selected_staff_id:
+            coordination_actions.insert(
+                0,
+                f"Review available {target_department} staff "
+                "and current staff availability"
+            )
+
+        if (
+            patient.required_equipment_type
+            and not selected_equipment_id
+        ):
+            coordination_actions.insert(
+                0,
+                f"Review availability of required equipment "
+                f"{patient.required_equipment_type}"
+            )
+
         return {
             "status": "coordination_required",
             "patient_id": patient_id,
@@ -282,19 +452,39 @@ def generate_unified_recommendation(
                 "turnover_candidates": turnover_candidates,
                 "maintenance_beds": maintenance_beds
             },
+            "resource_feasibility": {
+                "bed": {
+                    "status": "blocked",
+                    "reason": bottleneck_message
+                },
+                "staff": {
+                    "status": independent_resource_status["staff"],
+                    "target_department": target_department,
+                    "available_compatible_count":
+                        len(compatible_staff),
+                    "optimization": staff_result,
+                    "recommended_staff_id":
+                        selected_staff_id
+                },
+                "equipment": {
+                    "status":
+                        independent_resource_status["equipment"],
+                    "required_type":
+                        patient.required_equipment_type,
+                    "optimization": equipment_result,
+                    "recommended_equipment_id":
+                        selected_equipment_id
+                }
+            },
             "bed_optimization": bed_result,
-            "staff_optimization": {
-                "status": "not_run",
-                "reason":
-                    "No eligible bed allocation is currently available"
-            },
-            "equipment_optimization": {
-                "status": "not_run",
-                "reason":
-                    "No eligible bed allocation is currently available"
-            },
-            "recommended_actions": recommended_actions,
-            "reason": reason,
+            "staff_optimization": staff_result,
+            "equipment_optimization": equipment_result,
+            "recommended_actions": coordination_actions,
+            "reason": (
+                reason
+                + " Staff and equipment were assessed independently "
+                "of the blocked bed allocation."
+            ),
             "human_decision_required": True,
             "database_status": "not_modified",
             "database_modified": False
