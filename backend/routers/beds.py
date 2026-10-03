@@ -129,3 +129,56 @@ def update_bed_status(
         )
 
     return bed
+
+
+# =========================================================
+# COMPLETE BED TURNOVER
+# COORDINATOR / ADMIN ONLY
+# =========================================================
+
+@router.put(
+    "/{bed_id}/turnover-complete",
+    response_model=BedResponse
+)
+def complete_bed_turnover(
+    bed_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles("COORDINATOR", "ADMIN")
+    )
+):
+
+    bed = get_bed_by_id(
+        db,
+        bed_id
+    )
+
+    if not bed:
+        raise HTTPException(
+            status_code=404,
+            detail="Bed not found"
+        )
+
+    # Bed must actually be waiting for turnover
+    if bed.status != "turnover_required":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Bed {bed_id} is not "
+                "awaiting turnover"
+            )
+        )
+
+    # -----------------------------------------------------
+    # Bed is now clean and available
+    # -----------------------------------------------------
+
+    bed.status = "available"
+    bed.patient_id = None
+    bed.expected_release_at = None
+
+    db.commit()
+
+    db.refresh(bed)
+
+    return bed

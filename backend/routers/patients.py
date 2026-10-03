@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 
 from backend.models.patient import Patient
+from backend.models.bed import Bed
 
 from backend.schemas.patient import (
     PatientCreate,
@@ -108,6 +109,101 @@ def add_patient(
         db,
         patient_data
     )
+
+
+# =========================================================
+# DISCHARGE PATIENT
+# COORDINATOR / ADMIN ONLY
+# =========================================================
+
+@router.post(
+    "/{patient_id}/discharge"
+)
+def discharge_patient(
+    patient_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles("COORDINATOR", "ADMIN")
+    )
+):
+
+    patient = (
+        db.query(Patient)
+        .filter(
+            Patient.patient_id == patient_id
+        )
+        .first()
+    )
+
+    if not patient:
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    # Patient must currently be admitted
+    if patient.status.lower() != "admitted":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Patient {patient_id} "
+                "is not currently admitted"
+            )
+        )
+
+    # Find the bed occupied by this patient
+    bed = (
+        db.query(Bed)
+        .filter(
+            Bed.patient_id == patient.patient_id,
+            Bed.status == "occupied"
+        )
+        .first()
+    )
+
+    if not bed:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"No occupied bed found for "
+                f"patient {patient_id}"
+            )
+        )
+
+    # -----------------------------------------------------
+    # Discharge patient
+    # -----------------------------------------------------
+
+    patient.status = "discharged"
+
+    # -----------------------------------------------------
+    # Move bed into turnover state
+    # -----------------------------------------------------
+
+    bed.status = "turnover_required"
+
+    # Keep patient_id temporarily for traceability.
+    # It will be cleared when turnover is completed.
+
+    bed.expected_release_at = None
+
+    db.commit()
+
+    db.refresh(patient)
+    db.refresh(bed)
+
+    return {
+        "status": "success",
+        "message": (
+            "Patient discharged and bed "
+            "moved to turnover"
+        ),
+        "patient_id": patient.patient_id,
+        "patient_status": patient.status,
+        "bed_id": bed.bed_id,
+        "bed_status": bed.status,
+        "turnover_required": True
+    }
 
 
 # =========================================================

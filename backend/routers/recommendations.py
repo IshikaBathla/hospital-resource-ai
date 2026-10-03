@@ -1005,13 +1005,6 @@ def unified_recommendation(
             detail=result["message"]
         )
 
-    if result.get("status") == "no_feasible_allocation":
-
-        raise HTTPException(
-            status_code=409,
-            detail=result["message"]
-        )
-
     return result
 
 

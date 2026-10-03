@@ -128,22 +128,176 @@ def generate_unified_recommendation(
 
     if not bed_allocations:
 
+        # -----------------------------------------------------
+        # BED BOTTLENECK / ELIGIBILITY ANALYSIS
+        # -----------------------------------------------------
+        # Distinguish between: 
+        # 1. No beds are physically available.
+        # 2. Beds are available, but none are eligible under the
+        #    current allocation constraints.
+
+        all_beds = (
+            db.query(Bed)
+            .order_by(Bed.bed_id)
+            .all()
+        )
+
+        bed_status_counts = {}
+        available_beds_info = []
+        eligible_beds = []
+        ineligible_available_beds = []
+        occupied_beds = []
+        turnover_candidates = []
+        maintenance_beds = []
+
+        emergency_level = (
+            patient.emergency_level or ""
+        ).lower()
+
+        for bed in all_beds:
+
+            status = (bed.status or "unknown").lower()
+
+            bed_status_counts[status] = (
+                bed_status_counts.get(status, 0) + 1
+            )
+
+            if status == "available":
+
+                available_beds_info.append({
+                    "bed_id": bed.bed_id,
+                    "ward": bed.ward,
+                    "status": bed.status
+                })
+
+                # Current optimization rule: Critical/High patients
+                # can only be assigned to ICU beds.
+                if (
+                    emergency_level in {"critical", "high"}
+                    and (bed.ward or "").lower() != "icu"
+                ):
+                    ineligible_available_beds.append({
+                        "bed_id": bed.bed_id,
+                        "ward": bed.ward,
+                        "status": bed.status,
+                        "reason":
+                            "High-priority patient requires ICU "
+                            "under current allocation constraints"
+                    })
+                else:
+                    eligible_beds.append({
+                        "bed_id": bed.bed_id,
+                        "ward": bed.ward,
+                        "status": bed.status
+                    })
+
+            elif status == "occupied":
+                occupied_beds.append({
+                    "bed_id": bed.bed_id,
+                    "ward": bed.ward,
+                    "patient_id": bed.patient_id,
+                    "expected_release_at": bed.expected_release_at
+                })
+
+                if bed.expected_release_at:
+                    turnover_candidates.append({
+                        "bed_id": bed.bed_id,
+                        "ward": bed.ward,
+                        "patient_id": bed.patient_id,
+                        "expected_release_at":
+                            bed.expected_release_at
+                    })
+
+            elif status in {"maintenance", "under_maintenance"}:
+                maintenance_beds.append({
+                    "bed_id": bed.bed_id,
+                    "ward": bed.ward,
+                    "status": bed.status
+                })
+
+        if available_beds_info and not eligible_beds:
+            bottleneck_type = "bed_eligibility"
+            bottleneck_message = (
+                "Available bed(s) exist, but no eligible bed is "
+                "currently available for this patient under the "
+                "current allocation constraints"
+            )
+            reason = (
+                f"Patient {patient.patient_id} has available bed(s) "
+                f"in the hospital, but none are eligible under the "
+                f"current allocation constraints. The coordinator "
+                f"should review the available bed options and other "
+                f"operational alternatives before making the next decision."
+            )
+        elif not available_beds_info:
+            bottleneck_type = "bed_capacity"
+            bottleneck_message = (
+                "No immediately available bed is currently available"
+            )
+            reason = (
+                f"No immediately available bed was found for "
+                f"waiting patient {patient.patient_id}. "
+                f"This is an operational bed-capacity bottleneck. "
+                f"The coordinator should review eligible bed turnover, "
+                f"maintenance release, or other operational alternatives "
+                f"before making the next decision."
+            )
+        else:
+            bottleneck_type = "bed_optimization"
+            bottleneck_message = (
+                "Available bed(s) exist, but no feasible allocation "
+                "was produced by the optimization model"
+            )
+            reason = (
+                f"Available bed(s) were found for patient "
+                f"{patient.patient_id}, but the optimization model "
+                f"did not produce a feasible allocation. The coordinator "
+                f"should review the current operational constraints."
+            )
+
+        recommended_actions = [
+            "Review beds with an expected release time",
+            "Review beds currently under maintenance",
+            "Review operational alternatives with the coordinator"
+        ]
+
+        if ineligible_available_beds:
+            recommended_actions.insert(
+                0,
+                "Review available beds that are not eligible under the current allocation constraints"
+            )
+
         return {
-            "status": "no_feasible_allocation",
+            "status": "coordination_required",
             "patient_id": patient_id,
+            "bottleneck": {
+                "type": bottleneck_type,
+                "message": bottleneck_message,
+                "bed_status_counts": bed_status_counts,
+                "available_beds": available_beds_info,
+                "eligible_beds": eligible_beds,
+                "ineligible_available_beds":
+                    ineligible_available_beds,
+                "occupied_beds": occupied_beds,
+                "turnover_candidates": turnover_candidates,
+                "maintenance_beds": maintenance_beds
+            },
             "bed_optimization": bed_result,
             "staff_optimization": {
                 "status": "not_run",
                 "reason":
-                    "No feasible bed allocation"
+                    "No eligible bed allocation is currently available"
             },
             "equipment_optimization": {
                 "status": "not_run",
                 "reason":
-                    "No feasible bed allocation"
+                    "No eligible bed allocation is currently available"
             },
-            "message":
-                "No feasible bed allocation is currently available"
+            "recommended_actions": recommended_actions,
+            "reason": reason,
+            "human_decision_required": True,
+            "database_status": "not_modified",
+            "database_modified": False
         }
 
     selected_bed = bed_allocations[0]
