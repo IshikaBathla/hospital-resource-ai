@@ -1,0 +1,955 @@
+/* =========================================================
+   WHAT-IF SIMULATION PAGE
+========================================================= */
+
+.what-if-page {
+  min-height: 100vh;
+
+  /* Match the actual project sidebar */
+  margin-left: 248px;
+  width: calc(100% - 248px);
+
+  background: #f4f7fb;
+
+  box-sizing: border-box;
+}
+
+.what-if-container {
+  width: 100%;
+  max-width: 1700px;
+
+  margin: 0 auto;
+
+  padding: 40px 42px 60px;
+
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   PAGE HEADER
+========================================================= */
+
+.what-if-header {
+  display: flex;
+
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 30px;
+
+  margin-bottom: 30px;
+}
+
+.what-if-header-left {
+  min-width: 0;
+}
+
+.what-if-eyebrow {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  color: #2563eb;
+
+  font-size: 11px;
+
+  font-weight: 700;
+
+  letter-spacing: 0.13em;
+}
+
+.what-if-eyebrow svg {
+  flex-shrink: 0;
+}
+
+.what-if-header h1 {
+  margin: 9px 0 0;
+
+  color: #101828;
+
+  font-size: clamp(30px, 3vw, 44px);
+
+  line-height: 1.12;
+
+  letter-spacing: -0.035em;
+}
+
+.what-if-header p {
+  max-width: 700px;
+
+  margin: 11px 0 0;
+
+  color: #667085;
+
+  font-size: 14px;
+
+  line-height: 1.6;
+}
+
+/* =========================================================
+   SIMULATION ONLY BADGE
+========================================================= */
+
+.simulation-safe-badge {
+  min-width: 180px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 9px;
+
+  padding: 14px 18px;
+
+  background: #ecfdf3;
+
+  border: 1px solid #abefc6;
+
+  border-radius: 13px;
+
+  color: #027a48;
+
+  font-size: 12px;
+
+  font-weight: 700;
+
+  flex-shrink: 0;
+}
+
+.simulation-safe-badge svg {
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   MAIN SCENARIO CARD
+========================================================= */
+
+.scenario-card {
+  width: 100%;
+
+  background: #ffffff;
+
+  border: 1px solid #e6eaf0;
+
+  border-radius: 20px;
+
+  padding: 32px;
+
+  box-shadow:
+    0 5px 18px rgba(16, 24, 40, 0.035);
+
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   SCENARIO CARD HEADER
+========================================================= */
+
+.scenario-card-header {
+  padding-bottom: 28px;
+
+  border-bottom: 1px solid #edf0f4;
+}
+
+.section-label {
+  display: block;
+
+  color: #667085;
+
+  font-size: 10px;
+
+  font-weight: 700;
+
+  letter-spacing: 0.13em;
+}
+
+.scenario-card-header h2 {
+  margin: 8px 0 0;
+
+  color: #101828;
+
+  font-size: 25px;
+
+  line-height: 1.25;
+
+  letter-spacing: -0.02em;
+}
+
+.scenario-card-header p {
+  max-width: 800px;
+
+  margin: 9px 0 0;
+
+  color: #667085;
+
+  font-size: 14px;
+
+  line-height: 1.6;
+}
+
+/* =========================================================
+   SCENARIO SECTION
+========================================================= */
+
+.scenario-section {
+  margin-top: 30px;
+
+  padding-top: 28px;
+
+  border-top: 1px solid #edf0f4;
+}
+
+.scenario-section:first-of-type {
+  border-top: 0;
+
+  margin-top: 0;
+
+  padding-top: 28px;
+}
+
+.scenario-section-header {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  margin-bottom: 20px;
+}
+
+.scenario-section-icon {
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  border-radius: 10px;
+
+  flex-shrink: 0;
+}
+
+.scenario-section-icon.blue {
+  background: #eff6ff;
+
+  color: #2563eb;
+}
+
+.scenario-section-icon.green {
+  background: #ecfdf3;
+
+  color: #079455;
+}
+
+.scenario-section-icon.purple {
+  background: #f4f3ff;
+
+  color: #7f56d9;
+}
+
+.scenario-section-header h3 {
+  margin: 0;
+
+  color: #172033;
+
+  font-size: 17px;
+
+  font-weight: 700;
+}
+
+.scenario-section-header p {
+  margin: 4px 0 0;
+
+  color: #98a2b3;
+
+  font-size: 11px;
+
+  line-height: 1.5;
+}
+
+/* =========================================================
+   INPUT GRID
+========================================================= */
+
+.scenario-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 18px;
+}
+
+/* =========================================================
+   INPUT GROUP
+========================================================= */
+
+.scenario-input-group {
+  min-width: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 8px;
+}
+
+.scenario-input-group span {
+  color: #344054;
+
+  font-size: 12px;
+
+  font-weight: 600;
+
+  line-height: 1.4;
+}
+
+.scenario-input-group input {
+  width: 100%;
+
+  height: 48px;
+
+  padding: 0 14px;
+
+  border: 1px solid #d8dee9;
+
+  border-radius: 11px;
+
+  background: #ffffff;
+
+  color: #172033;
+
+  font-size: 14px;
+
+  outline: none;
+
+  box-sizing: border-box;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.scenario-input-group input:hover {
+  border-color: #b8c2d1;
+}
+
+.scenario-input-group input:focus {
+  border-color: #2563eb;
+
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Remove number input arrows */
+
+.scenario-input-group input::-webkit-outer-spin-button,
+.scenario-input-group input::-webkit-inner-spin-button {
+  margin: 0;
+
+  -webkit-appearance: none;
+}
+
+.scenario-input-group input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* =========================================================
+   ACTION AREA
+========================================================= */
+
+.scenario-actions {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: flex-end;
+
+  gap: 10px;
+
+  margin-top: 32px;
+
+  padding-top: 24px;
+
+  border-top: 1px solid #edf0f4;
+}
+
+.what-if-secondary-button,
+.what-if-primary-button {
+  min-height: 42px;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 8px;
+
+  padding: 0 16px;
+
+  border-radius: 9px;
+
+  font-size: 12px;
+
+  font-weight: 600;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.what-if-secondary-button {
+  border: 1px solid #d8dee9;
+
+  background: #ffffff;
+
+  color: #475467;
+}
+
+.what-if-secondary-button:hover {
+  background: #f8fafc;
+
+  border-color: #c5ccd8;
+}
+
+.what-if-primary-button {
+  border: 1px solid #2563eb;
+
+  background: #2563eb;
+
+  color: #ffffff;
+
+  box-shadow:
+    0 7px 16px rgba(37, 99, 235, 0.18);
+}
+
+.what-if-primary-button:hover {
+  background: #1d4ed8;
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 9px 20px rgba(37, 99, 235, 0.23);
+}
+
+.what-if-primary-button:disabled,
+.what-if-secondary-button:disabled {
+  opacity: 0.6;
+
+  cursor: not-allowed;
+
+  transform: none;
+
+  box-shadow: none;
+}
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+.what-if-error {
+  display: flex;
+
+  align-items: center;
+
+  gap: 9px;
+
+  margin-top: 18px;
+
+  padding: 12px 14px;
+
+  border: 1px solid #fecdca;
+
+  border-radius: 9px;
+
+  background: #fef3f2;
+
+  color: #b42318;
+
+  font-size: 12px;
+
+  line-height: 1.5;
+}
+
+.what-if-error svg {
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   RESULTS
+========================================================= */
+
+.simulation-results {
+  margin-top: 30px;
+}
+
+.results-header {
+  display: flex;
+
+  align-items: flex-start;
+
+  justify-content: space-between;
+
+  gap: 25px;
+
+  margin-bottom: 18px;
+}
+
+.results-header h2 {
+  margin: 7px 0 0;
+
+  color: #101828;
+
+  font-size: 24px;
+
+  letter-spacing: -0.02em;
+}
+
+.results-header p {
+  margin: 6px 0 0;
+
+  color: #667085;
+
+  font-size: 13px;
+}
+
+.database-safe-badge {
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  padding: 10px 13px;
+
+  border: 1px solid #abefc6;
+
+  border-radius: 9px;
+
+  background: #ecfdf3;
+
+  color: #027a48;
+
+  font-size: 11px;
+
+  font-weight: 600;
+
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   DATABASE STATUS CARD
+========================================================= */
+
+.simulation-status-card {
+  display: flex;
+
+  align-items: flex-start;
+
+  gap: 13px;
+
+  padding: 18px;
+
+  margin-bottom: 16px;
+
+  border: 1px solid #d1fadf;
+
+  border-radius: 13px;
+
+  background: #f6fef9;
+}
+
+.simulation-status-icon {
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  border-radius: 9px;
+
+  background: #dcfae6;
+
+  color: #027a48;
+
+  flex-shrink: 0;
+}
+
+.simulation-status-card span {
+  display: block;
+
+  margin-bottom: 3px;
+
+  color: #667085;
+
+  font-size: 9px;
+
+  font-weight: 700;
+
+  letter-spacing: 0.1em;
+}
+
+.simulation-status-card strong {
+  display: block;
+
+  color: #027a48;
+
+  font-size: 16px;
+}
+
+.simulation-status-card p {
+  margin: 5px 0 0;
+
+  color: #667085;
+
+  font-size: 11px;
+
+  line-height: 1.5;
+}
+
+/* =========================================================
+   RESULT CARD
+========================================================= */
+
+.result-card {
+  margin-bottom: 16px;
+
+  border: 1px solid #e6eaf0;
+
+  border-radius: 14px;
+
+  background: #ffffff;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 4px 14px rgba(16, 24, 40, 0.03);
+}
+
+.result-card-highlighted {
+  border-color: #bfdbfe;
+
+  box-shadow:
+    0 7px 20px rgba(37, 99, 235, 0.07);
+}
+
+.result-card-header {
+  display: flex;
+
+  align-items: center;
+
+  gap: 11px;
+
+  padding: 17px 18px;
+
+  border-bottom: 1px solid #edf0f4;
+}
+
+.result-card-icon {
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  border-radius: 9px;
+
+  background: #eff6ff;
+
+  color: #2563eb;
+
+  flex-shrink: 0;
+}
+
+.result-card-header h3 {
+  margin: 0;
+
+  color: #344054;
+
+  font-size: 14px;
+}
+
+.result-card-header p {
+  margin: 3px 0 0;
+
+  color: #98a2b3;
+
+  font-size: 10px;
+}
+
+/* =========================================================
+   RESULT BODY
+========================================================= */
+
+.result-card-body {
+  padding: 4px 18px;
+}
+
+.what-if-result-row {
+  min-height: 45px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 20px;
+
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.what-if-result-row:last-child {
+  border-bottom: 0;
+}
+
+.what-if-result-row span {
+  color: #667085;
+
+  font-size: 11px;
+}
+
+.what-if-result-row strong {
+  max-width: 65%;
+
+  color: #344054;
+
+  font-size: 11px;
+
+  font-weight: 600;
+
+  text-align: right;
+
+  word-break: break-word;
+}
+
+/* =========================================================
+   RAW RESPONSE
+========================================================= */
+
+.raw-response {
+  margin-top: 20px;
+
+  border: 1px solid #e6eaf0;
+
+  border-radius: 11px;
+
+  background: #ffffff;
+
+  overflow: hidden;
+}
+
+.raw-response summary {
+  padding: 13px 15px;
+
+  color: #475467;
+
+  font-size: 11px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.raw-response summary:hover {
+  background: #f8fafc;
+}
+
+.raw-response pre {
+  margin: 0;
+
+  padding: 16px;
+
+  border-top: 1px solid #edf0f4;
+
+  background: #f8fafc;
+
+  color: #344054;
+
+  font-size: 10px;
+
+  line-height: 1.6;
+
+  overflow-x: auto;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+/*
+   IMPORTANT:
+
+   Actual project sidebar:
+   > 700px  = 248px
+   <= 700px = 70px
+
+   This matches App.css.
+*/
+
+/* ---------------------------------------------------------
+   MEDIUM DESKTOP
+--------------------------------------------------------- */
+
+@media (max-width: 1200px) {
+  .what-if-page {
+    margin-left: 248px;
+
+    width: calc(100% - 248px);
+  }
+
+  .what-if-container {
+    padding: 34px 28px 50px;
+  }
+
+  .scenario-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .what-if-header h1 {
+    font-size: 38px;
+  }
+}
+
+/* ---------------------------------------------------------
+   NARROW DESKTOP / TABLET
+--------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .what-if-header {
+    flex-direction: column;
+  }
+
+  .simulation-safe-badge {
+    align-self: flex-start;
+  }
+
+  .scenario-card {
+    padding: 25px;
+  }
+
+  .results-header {
+    flex-direction: column;
+  }
+
+  .database-safe-badge {
+    align-self: flex-start;
+  }
+}
+
+/* ---------------------------------------------------------
+   COLLAPSED SIDEBAR
+--------------------------------------------------------- */
+
+@media (max-width: 700px) {
+  .what-if-page {
+    margin-left: 70px;
+
+    width: calc(100% - 70px);
+  }
+
+  .what-if-container {
+    padding: 25px 18px 40px;
+  }
+
+  .what-if-header {
+    gap: 18px;
+  }
+
+  .what-if-header h1 {
+    font-size: 29px;
+  }
+
+  .what-if-header p {
+    font-size: 13px;
+  }
+
+  .scenario-card {
+    padding: 20px;
+  }
+
+  .scenario-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scenario-section {
+    margin-top: 25px;
+
+    padding-top: 22px;
+  }
+
+  .scenario-actions {
+    align-items: stretch;
+
+    flex-direction: column-reverse;
+  }
+
+  .what-if-secondary-button,
+  .what-if-primary-button {
+    width: 100%;
+  }
+
+  .what-if-result-row {
+    align-items: flex-start;
+
+    flex-direction: column;
+
+    gap: 5px;
+
+    padding: 12px 0;
+  }
+
+  .what-if-result-row strong {
+    max-width: 100%;
+
+    text-align: left;
+  }
+}
+
+/* ---------------------------------------------------------
+   VERY SMALL SCREEN
+--------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  .what-if-container {
+    padding: 20px 14px 35px;
+  }
+
+  .what-if-header h1 {
+    font-size: 26px;
+  }
+
+  .scenario-card {
+    padding: 17px;
+  }
+
+  .scenario-card-header h2 {
+    font-size: 21px;
+  }
+
+  .scenario-section-header {
+    align-items: flex-start;
+  }
+
+  .simulation-safe-badge {
+    width: 100%;
+  }
+}

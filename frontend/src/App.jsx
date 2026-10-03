@@ -1,4 +1,9 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -7,6 +12,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Patients from "./pages/Patients";
 import Recommendations from "./pages/Recommendations";
+import WhatIf from "./pages/WhatIf";
 
 function App() {
   return (
@@ -53,8 +59,10 @@ function App() {
 
                 <div className="placeholder-page">
                   <h2>Resources</h2>
+
                   <p>
-                    Resource management module coming next.
+                    Resource management module
+                    coming next.
                   </p>
                 </div>
               </>
@@ -78,13 +86,7 @@ function App() {
             element={
               <>
                 <Navbar />
-
-                <div className="placeholder-page">
-                  <h2>What-If Simulation</h2>
-                  <p>
-                    Simulation workspace coming next.
-                  </p>
-                </div>
+                <WhatIf />
               </>
             }
           />
