@@ -20,6 +20,11 @@ from backend.services.assignment_service import (
     delete_assignment
 )
 
+from backend.utils.dependencies import (
+    get_current_user,
+    require_roles
+)
+
 
 router = APIRouter(
     prefix="/assignments",
@@ -33,7 +38,8 @@ router = APIRouter(
 
 @router.get("/")
 def get_assignments(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     return get_all_assignments(db)
@@ -45,7 +51,8 @@ def get_assignments(
 
 @router.get("/current")
 def get_current_assignments(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     result = db.execute(
@@ -58,7 +65,10 @@ def get_current_assignments(
                 equipment_id,
                 assigned_at
             FROM assignments
-            ORDER BY patient_id, assigned_at DESC, assignment_id DESC
+            ORDER BY
+                patient_id,
+                assigned_at DESC,
+                assignment_id DESC
         """)
     )
 
@@ -77,7 +87,8 @@ def get_current_assignments(
 @router.get("/patient/{patient_id}")
 def get_patient_assignment(
     patient_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     result = db.execute(
@@ -91,7 +102,9 @@ def get_patient_assignment(
                 assigned_at
             FROM assignments
             WHERE patient_id = :patient_id
-            ORDER BY assigned_at DESC, assignment_id DESC
+            ORDER BY
+                assigned_at DESC,
+                assignment_id DESC
             LIMIT 1
         """),
         {
@@ -121,7 +134,8 @@ def get_patient_assignment(
 @router.get("/{assignment_id}")
 def get_assignment(
     assignment_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     assignment = get_assignment_by_id(
@@ -141,12 +155,16 @@ def get_assignment(
 
 # =========================================================
 # CREATE ASSIGNMENT
+# COORDINATOR / ADMIN ONLY
 # =========================================================
 
 @router.post("/")
 def add_assignment(
     assignment_data: AssignmentCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles("COORDINATOR", "ADMIN")
+    )
 ):
 
     try:
@@ -166,12 +184,16 @@ def add_assignment(
 
 # =========================================================
 # DELETE ASSIGNMENT
+# COORDINATOR / ADMIN ONLY
 # =========================================================
 
 @router.delete("/{assignment_id}")
 def remove_assignment(
     assignment_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles("COORDINATOR", "ADMIN")
+    )
 ):
 
     try:

@@ -20,6 +20,11 @@ from backend.services.bed_service import (
     update_bed
 )
 
+from backend.utils.dependencies import (
+    get_current_user,
+    require_roles
+)
+
 
 router = APIRouter(
     prefix="/beds",
@@ -27,16 +32,25 @@ router = APIRouter(
 )
 
 
+# =========================================================
+# GET ALL BEDS
+# =========================================================
+
 @router.get(
     "/",
     response_model=list[BedResponse]
 )
 def get_beds(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     return get_all_beds(db)
 
+
+# =========================================================
+# GET AVAILABLE BEDS
+# =========================================================
 
 @router.get(
     "/available",
@@ -44,7 +58,8 @@ def get_beds(
 )
 def get_available(
     ward: str | None = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     return get_available_beds(
@@ -53,13 +68,18 @@ def get_available(
     )
 
 
+# =========================================================
+# GET BED BY ID
+# =========================================================
+
 @router.get(
     "/{bed_id}",
     response_model=BedResponse
 )
 def get_bed(
     bed_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     bed = get_bed_by_id(
@@ -76,6 +96,11 @@ def get_bed(
     return bed
 
 
+# =========================================================
+# UPDATE BED
+# COORDINATOR / ADMIN ONLY
+# =========================================================
+
 @router.put(
     "/{bed_id}",
     response_model=BedResponse
@@ -83,7 +108,10 @@ def get_bed(
 def update_bed_status(
     bed_id: str,
     data: BedUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles("COORDINATOR", "ADMIN")
+    )
 ):
 
     bed = update_bed(

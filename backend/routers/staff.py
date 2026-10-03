@@ -17,6 +17,11 @@ from backend.services.staff_service import (
     update_staff_status
 )
 
+from backend.utils.dependencies import (
+    get_current_user,
+    require_roles
+)
+
 
 router = APIRouter(
     prefix="/staff",
@@ -24,16 +29,25 @@ router = APIRouter(
 )
 
 
+# =========================================================
+# GET ALL STAFF
+# =========================================================
+
 @router.get(
     "/",
     response_model=list[StaffResponse]
 )
 def get_staff(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     return get_all_staff(db)
 
+
+# =========================================================
+# GET AVAILABLE STAFF
+# =========================================================
 
 @router.get(
     "/available",
@@ -42,7 +56,8 @@ def get_staff(
 def get_available(
     role: str | None = None,
     department: str | None = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     return get_available_staff(
@@ -52,13 +67,18 @@ def get_available(
     )
 
 
+# =========================================================
+# GET STAFF MEMBER
+# =========================================================
+
 @router.get(
     "/{staff_id}",
     response_model=StaffResponse
 )
 def get_staff_member(
     staff_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     staff = get_staff_by_id(
@@ -75,6 +95,11 @@ def get_staff_member(
     return staff
 
 
+# =========================================================
+# UPDATE STAFF STATUS
+# COORDINATOR / ADMIN ONLY
+# =========================================================
+
 @router.patch(
     "/{staff_id}/status",
     response_model=StaffResponse
@@ -82,7 +107,10 @@ def get_staff_member(
 def update_status(
     staff_id: str,
     status: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles("COORDINATOR", "ADMIN")
+    )
 ):
 
     try:

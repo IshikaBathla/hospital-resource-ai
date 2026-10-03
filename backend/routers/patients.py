@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 
+from backend.models.patient import Patient
+
 from backend.schemas.patient import (
     PatientCreate,
     PatientResponse
@@ -19,6 +21,11 @@ from backend.services.patient_service import (
     create_patient
 )
 
+from backend.utils.dependencies import (
+    get_current_user,
+    require_roles
+)
+
 
 router = APIRouter(
     prefix="/patients",
@@ -26,15 +33,24 @@ router = APIRouter(
 )
 
 
+# =========================================================
+# GET ALL PATIENTS
+# =========================================================
+
 @router.get(
     "/",
     response_model=list[PatientResponse]
 )
 def get_patients(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     return get_all_patients(db)
 
+
+# =========================================================
+# GET PATIENT BY ID
+# =========================================================
 
 @router.get(
     "/{patient_id}",
@@ -42,7 +58,8 @@ def get_patients(
 )
 def get_patient(
     patient_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     patient = get_patient_by_id(
@@ -59,13 +76,21 @@ def get_patient(
     return patient
 
 
+# =========================================================
+# CREATE PATIENT
+# COORDINATOR / ADMIN ONLY
+# =========================================================
+
 @router.post(
     "/",
     response_model=PatientResponse
 )
 def add_patient(
     patient_data: PatientCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles("COORDINATOR", "ADMIN")
+    )
 ):
 
     existing_patient = get_patient_by_id(
@@ -83,14 +108,27 @@ def add_patient(
         db,
         patient_data
     )
+
+
+# =========================================================
+# DELETE PATIENT
+# COORDINATOR / ADMIN ONLY
+# =========================================================
+
 @router.delete("/{patient_id}")
 def delete_patient(
     patient_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles("COORDINATOR", "ADMIN")
+    )
 ):
+
     patient = (
         db.query(Patient)
-        .filter(Patient.patient_id == patient_id)
+        .filter(
+            Patient.patient_id == patient_id
+        )
         .first()
     )
 
