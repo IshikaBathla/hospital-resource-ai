@@ -26,6 +26,9 @@ function Patients() {
   const [priority, setPriority] = useState("all");
   const [status, setStatus] = useState("all");
 
+  const [dischargingPatientId, setDischargingPatientId] = useState("");
+  const [dischargeError, setDischargeError] = useState("");
+
   const fetchPatients = async (showRefresh = false) => {
     try {
       if (showRefresh) {
@@ -63,6 +66,35 @@ function Patients() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const handleDischarge = async (patient) => {
+    const confirmed = window.confirm(
+      `Discharge ${patient.name} (${patient.patient_id})?\n\n` +
+        "This will mark the patient as discharged and place the occupied bed into turnover-required status."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDischargeError("");
+      setDischargingPatientId(patient.patient_id);
+
+      await api.post(`/patients/${patient.patient_id}/discharge`);
+
+      await fetchPatients(true);
+    } catch (err) {
+      console.error("Patient discharge failed:", err);
+
+      setDischargeError(
+        err?.response?.data?.detail ||
+          `Unable to discharge ${patient.patient_id}.`
+      );
+    } finally {
+      setDischargingPatientId("");
     }
   };
 
@@ -149,6 +181,19 @@ function Patients() {
   };
 
   const renderOperationalState = (patient) => {
+    const patientStatus = String(
+      patient.status || ""
+    ).toLowerCase();
+
+    if (patientStatus === "discharged") {
+      return (
+        <div className="operational-state discharged-state">
+          <CircleCheck size={16} />
+          <span>Discharged</span>
+        </div>
+      );
+    }
+
     const assignment = assignmentMap[patient.patient_id];
 
     if (!assignment) {
@@ -340,6 +385,12 @@ function Patients() {
           </div>
         )}
 
+        {dischargeError && (
+          <div className="patients-error">
+            {dischargeError}
+          </div>
+        )}
+
         <section className="patients-table-card">
 
           <div className="patients-table-header">
@@ -378,6 +429,7 @@ function Patients() {
                     <th>Emergency Level</th>
                     <th>Status</th>
                     <th>Operational State</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
 
@@ -423,6 +475,29 @@ function Patients() {
 
                       <td>
                         {renderOperationalState(patient)}
+                      </td>
+
+                      <td>
+                        {String(patient.status || "").toLowerCase() ===
+                        "admitted" ? (
+                          <button
+                            type="button"
+                            className="patient-discharge-button"
+                            onClick={() => handleDischarge(patient)}
+                            disabled={
+                              dischargingPatientId ===
+                              patient.patient_id
+                            }
+                          >
+                            {dischargingPatientId === patient.patient_id
+                              ? "Discharging..."
+                              : "Discharge"}
+                          </button>
+                        ) : (
+                          <span className="patient-action-muted">
+                            —
+                          </span>
+                        )}
                       </td>
 
                     </tr>
