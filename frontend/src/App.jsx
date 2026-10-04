@@ -11,6 +11,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Patients from "./pages/Patients";
+import Resources from "./pages/Resources";
 import Recommendations from "./pages/Recommendations";
 import WhatIf from "./pages/WhatIf";
 
@@ -56,15 +57,7 @@ function App() {
             element={
               <>
                 <Navbar />
-
-                <div className="placeholder-page">
-                  <h2>Resources</h2>
-
-                  <p>
-                    Resource management module
-                    coming next.
-                  </p>
-                </div>
+                <Resources />
               </>
             }
           />

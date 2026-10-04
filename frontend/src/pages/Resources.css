@@ -1,0 +1,584 @@
+/* =========================================================
+   RESOURCES PAGE
+========================================================= */
+
+.resources-page {
+  min-height: 100vh;
+
+  margin-left: 248px;
+
+  background:
+    radial-gradient(
+      circle at 80% 0%,
+      rgba(37, 99, 235, 0.045),
+      transparent 25%
+    ),
+    var(--background);
+}
+
+.resources-container {
+  width: 100%;
+
+  max-width: 1700px;
+
+  margin: 0 auto;
+
+  padding: 40px 42px 60px;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.resources-header {
+  display: flex;
+
+  align-items: flex-start;
+
+  justify-content: space-between;
+
+  gap: 25px;
+
+  margin-bottom: 30px;
+}
+
+.resources-eyebrow {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  color: #2563eb;
+
+  font-size: 11px;
+
+  font-weight: 700;
+
+  letter-spacing: 0.13em;
+}
+
+.resources-eyebrow svg {
+  flex-shrink: 0;
+}
+
+.resources-header h1 {
+  margin: 9px 0 0;
+
+  color: var(--heading);
+
+  font-size: clamp(30px, 3vw, 42px);
+
+  line-height: 1.12;
+
+  letter-spacing: -0.035em;
+}
+
+.resources-header p {
+  max-width: 650px;
+
+  margin: 11px 0 0;
+
+  color: #667085;
+
+  font-size: 13px;
+
+  line-height: 1.6;
+}
+
+
+/* =========================================================
+   REFRESH BUTTON
+========================================================= */
+
+.refresh-button {
+  min-height: 40px;
+
+  padding: 0 15px;
+
+  border: 1px solid #d9e1ec;
+
+  border-radius: 9px;
+
+  background: white;
+
+  color: #344054;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 8px;
+
+  font-size: 11px;
+
+  font-weight: 600;
+
+  transition: 0.2s;
+
+  flex-shrink: 0;
+}
+
+.refresh-button:hover {
+  border-color: #2563eb;
+
+  color: #2563eb;
+
+  background: #f8fbff;
+}
+
+.refresh-button:disabled {
+  opacity: 0.7;
+
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+.resources-error {
+  display: flex;
+
+  align-items: center;
+
+  gap: 9px;
+
+  margin-bottom: 22px;
+
+  padding: 12px 14px;
+
+  border: 1px solid #fecdca;
+
+  border-radius: 9px;
+
+  background: #fef3f2;
+
+  color: #b42318;
+
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   SUMMARY
+========================================================= */
+
+.resource-summary-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 18px;
+
+  margin-bottom: 25px;
+}
+
+.resource-summary-card {
+  padding: 21px;
+
+  border: 1px solid #e6eaf0;
+
+  border-radius: 13px;
+
+  background: white;
+
+  box-shadow:
+    0 3px 12px rgba(16, 24, 40, 0.035);
+}
+
+.resource-summary-top {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  color: #667085;
+
+  font-size: 11px;
+
+  font-weight: 600;
+}
+
+.resource-summary-icon {
+  width: 35px;
+  height: 35px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 9px;
+
+  background: #eff6ff;
+
+  color: #2563eb;
+}
+
+.resource-summary-total {
+  margin-top: 17px;
+
+  color: #101828;
+
+  font-size: 30px;
+
+  font-weight: 700;
+
+  line-height: 1;
+}
+
+.resource-summary-bottom {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, 1fr);
+
+  gap: 10px;
+
+  margin-top: 18px;
+
+  padding-top: 14px;
+
+  border-top: 1px solid #eef1f5;
+}
+
+.resource-summary-bottom div {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.resource-summary-bottom small {
+  color: #98a2b3;
+
+  font-size: 9px;
+
+  font-weight: 600;
+}
+
+.resource-summary-bottom strong {
+  color: #344054;
+
+  font-size: 13px;
+}
+
+
+/* =========================================================
+   TABLE CARD
+========================================================= */
+
+.resource-table-card {
+  margin-bottom: 22px;
+
+  overflow: hidden;
+
+  border: 1px solid #e6eaf0;
+
+  border-radius: 13px;
+
+  background: white;
+
+  box-shadow:
+    0 3px 12px rgba(16, 24, 40, 0.035);
+}
+
+.resource-table-header {
+  min-height: 76px;
+
+  padding: 17px 20px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 15px;
+
+  border-bottom: 1px solid #edf0f4;
+}
+
+.resource-table-title {
+  display: flex;
+
+  align-items: center;
+
+  gap: 11px;
+}
+
+.resource-table-icon {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+
+  background: #f2f6ff;
+
+  color: #2563eb;
+}
+
+.resource-table-title h2 {
+  margin: 0;
+
+  color: #101828;
+
+  font-size: 14px;
+}
+
+.resource-table-title p {
+  margin: 4px 0 0;
+
+  color: #98a2b3;
+
+  font-size: 10px;
+}
+
+.resource-count {
+  min-width: 28px;
+  height: 28px;
+
+  padding: 0 8px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 7px;
+
+  background: #f2f4f7;
+
+  color: #667085;
+
+  font-size: 10px;
+
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   TABLE
+========================================================= */
+
+.resource-table-wrapper {
+  width: 100%;
+
+  overflow-x: auto;
+}
+
+.resource-table {
+  width: 100%;
+
+  border-collapse: collapse;
+
+  min-width: 650px;
+}
+
+.resource-table th {
+  padding: 11px 20px;
+
+  text-align: left;
+
+  background: #fafbfc;
+
+  border-bottom: 1px solid #edf0f4;
+
+  color: #98a2b3;
+
+  font-size: 8px;
+
+  font-weight: 700;
+
+  letter-spacing: 0.08em;
+}
+
+.resource-table td {
+  padding: 13px 20px;
+
+  border-bottom: 1px solid #f0f2f5;
+
+  color: #475467;
+
+  font-size: 10px;
+}
+
+.resource-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.resource-table tbody tr:hover {
+  background: #fafcff;
+}
+
+.resource-table td strong {
+  color: #344054;
+
+  font-size: 10px;
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.resource-status {
+  display: inline-flex;
+
+  align-items: center;
+
+  min-height: 23px;
+
+  padding: 0 8px;
+
+  border-radius: 6px;
+
+  font-size: 8px;
+
+  font-weight: 700;
+}
+
+.status-available {
+  background: #ecfdf3;
+
+  color: #027a48;
+}
+
+.status-occupied {
+  background: #eff6ff;
+
+  color: #175cd3;
+}
+
+.status-warning {
+  background: #fffaeb;
+
+  color: #b54708;
+}
+
+.status-busy {
+  background: #fef3f2;
+
+  color: #b42318;
+}
+
+.status-default {
+  background: #f2f4f7;
+
+  color: #667085;
+}
+
+
+/* =========================================================
+   EMPTY STATE
+========================================================= */
+
+.resource-empty {
+  min-height: 150px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 8px;
+
+  color: #98a2b3;
+
+  font-size: 10px;
+}
+
+.resource-empty svg {
+  color: #12b76a;
+}
+
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+.resources-loading {
+  min-height: 70vh;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  color: #667085;
+
+  font-size: 12px;
+}
+
+.spin {
+  animation: resource-spin 1s linear infinite;
+}
+
+@keyframes resource-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1000px) {
+  .resource-summary-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .resources-page {
+    margin-left: 70px;
+  }
+
+  .resources-container {
+    padding: 25px 18px 40px;
+  }
+
+  .resources-header {
+    flex-direction: column;
+  }
+
+  .refresh-button {
+    width: 100%;
+  }
+
+  .resource-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .resources-header h1 {
+    font-size: 28px;
+  }
+}
