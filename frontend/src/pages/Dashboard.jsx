@@ -23,6 +23,7 @@ function Dashboard() {
   const [staff, setStaff] = useState([]);
   const [equipment, setEquipment] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
+  const [alerts, setAlerts] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [systemStatus, setSystemStatus] = useState("Checking...");
@@ -46,6 +47,7 @@ function Dashboard() {
         staffResponse,
         equipmentResponse,
         recommendationsResponse,
+        alertsResponse,
       ] = await Promise.all([
         api.get("/hello"),
         api.get("/patients"),
@@ -53,6 +55,7 @@ function Dashboard() {
         api.get("/staff"),
         api.get("/equipment"),
         api.get("/recommendations/pending"),
+        api.get("/alerts"),
       ]);
 
       setPatients(patientsResponse.data || []);
@@ -60,6 +63,7 @@ function Dashboard() {
       setStaff(staffResponse.data || []);
       setEquipment(equipmentResponse.data || []);
       setRecommendations(recommendationsResponse.data || []);
+      setAlerts(alertsResponse.data?.alerts || []);
 
       setSystemStatus("Online");
       setSystemMessage(
@@ -474,6 +478,88 @@ function Dashboard() {
               );
             })}
           </div>
+        </section>
+
+        {/* =====================================================
+            OPERATIONAL ALERTS
+        ===================================================== */}
+
+        <section className="alerts-section">
+          <div className="section-heading">
+            <div>
+              <span>OPERATIONAL ALERTS</span>
+              <h2>Current resource pressure</h2>
+            </div>
+
+            <div className="live-badge">
+              <AlertTriangle size={14} />
+              {alerts.length} active
+            </div>
+          </div>
+
+          {alerts.length > 0 ? (
+            <div className="alerts-grid">
+              {alerts.map((alert, index) => (
+                <div
+                  className={`alert-card ${
+                    String(alert.severity).toLowerCase()
+                  }`}
+                  key={`${alert.department}-${index}`}
+                >
+                  <div className="alert-card-icon">
+                    <AlertTriangle size={19} />
+                  </div>
+
+                  <div className="alert-card-content">
+                    <div className="alert-card-top">
+                      <div>
+                        <span className="alert-severity">
+                          {alert.severity}
+                        </span>
+
+                        <h3>
+                          {alert.department}
+                        </h3>
+                      </div>
+
+                      <Siren size={18} />
+                    </div>
+
+                    <strong className="alert-title">
+                      {alert.title}
+                    </strong>
+
+                    <p>
+                      {alert.message}
+                    </p>
+
+                    <div className="alert-action">
+                      <span>
+                        RECOMMENDED ACTION
+                      </span>
+
+                      <strong>
+                        {alert.recommended_action}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="alert-empty">
+              <CheckCircle2 size={28} />
+
+              <strong>
+                No active operational alerts
+              </strong>
+
+              <span>
+                Current hospital resources are not
+                generating any pressure alerts.
+              </span>
+            </div>
+          )}
         </section>
 
         {/* =====================================================

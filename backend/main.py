@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from backend.database import initialize_database
 from fastapi.middleware.cors import CORSMiddleware
+
 from backend.routers.patients import (
     router as patient_router
 )
@@ -38,21 +39,35 @@ from backend.services.background_service import (
     background_resource_monitor
 )
 
-from backend.routers.simulation import router as simulation_router
+from backend.routers.simulation import (
+    router as simulation_router
+)
 
-from backend.routers.optimization import router as optimization_router
+from backend.routers.optimization import (
+    router as optimization_router
+)
 
 from backend.routers import forecasting
 
-from backend.models.recommendation_outcome import RecommendationOutcome
+from backend.models.recommendation_outcome import (
+    RecommendationOutcome
+)
 
 from backend.routers import outcomes
 
 from backend.routers import what_if
 
-from backend.routers.strategy import router as strategy_router
+from backend.routers.strategy import (
+    router as strategy_router
+)
 
 from backend.routers import auth
+
+from backend.routers.alerts import (
+    router as alert_router
+)
+
+
 # =========================================================
 # APPLICATION LIFESPAN
 # =========================================================
@@ -111,6 +126,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -155,20 +171,39 @@ app.include_router(
     procedure_router
 )
 
-app.include_router(simulation_router)
-app.include_router(optimization_router)
-app.include_router(forecasting.router)
+app.include_router(
+    simulation_router
+)
+
+app.include_router(
+    optimization_router
+)
+
+app.include_router(
+    forecasting.router
+)
+
 app.include_router(
     outcomes.router
 )
+
 app.include_router(
     what_if.router
 )
-app.include_router(strategy_router)
+
+app.include_router(
+    strategy_router
+)
 
 app.include_router(
     auth.router
 )
+
+app.include_router(
+    alert_router
+)
+
+
 # =========================================================
 # HEALTH CHECK
 # =========================================================
