@@ -67,6 +67,10 @@ from backend.routers.alerts import (
     router as alert_router
 )
 
+from backend.routers.notifications import (
+    router as notification_router
+)
+
 
 # =========================================================
 # APPLICATION LIFESPAN
@@ -201,6 +205,10 @@ app.include_router(
 
 app.include_router(
     alert_router
+)
+
+app.include_router(
+    notification_router
 )
 
 
