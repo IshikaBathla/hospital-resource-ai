@@ -14,6 +14,7 @@ import Patients from "./pages/Patients";
 import Resources from "./pages/Resources";
 import Recommendations from "./pages/Recommendations";
 import WhatIf from "./pages/WhatIf";
+import Notifications from "./pages/Notifications";
 
 function App() {
   return (
@@ -80,6 +81,17 @@ function App() {
               <>
                 <Navbar />
                 <WhatIf />
+              </>
+            }
+          />
+
+          {/* Notifications */}
+          <Route
+            path="/notifications"
+            element={
+              <>
+                <Navbar />
+                <Notifications />
               </>
             }
           />

@@ -752,11 +752,13 @@ function WhatIf() {
                   label="Equipment"
                   value={
                     item.resources?.equipment
-                      ? `${item.resources.equipment.status} — ${
-                          item.resources.equipment
-                            .recommended_equipment_id ||
-                          "None"
-                        }`
+                      ? item.resources.equipment.status === "not_required"
+                        ? "Not required"
+                        : `${item.resources.equipment.status} — ${
+                            item.resources.equipment
+                              .recommended_equipment_id ||
+                            "None"
+                          }`
                       : "—"
                   }
                 />
@@ -1217,10 +1219,15 @@ function WhatIf() {
 
             {result.reallocation_candidates && (
               <ResultCard
-                title="Reallocation Candidates"
-                description="Existing patients that can be considered for simulated reallocation."
+                title="Potential Reallocation Candidates"
+                description="Existing patients identified as possible reallocation options. They are not selected unless the optimization chooses them."
                 icon={<BedDouble size={18} />}
               >
+                <ResultRow
+                  label="Selection Status"
+                  value="Potential candidates — not selected in this scenario"
+                />
+
                 {result.reallocation_candidates.length ===
                 0 ? (
                   <ResultRow

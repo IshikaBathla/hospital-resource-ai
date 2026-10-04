@@ -2275,3 +2275,213 @@ button {
     gap: 6px;
   }
 }
+
+/* =========================================================
+   RESOURCE PRESSURE
+========================================================= */
+
+.pressure-section {
+  margin-bottom: 22px;
+}
+
+.pressure-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.pressure-card {
+  min-width: 0;
+  padding: 18px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.035);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pressure-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.07);
+}
+
+.pressure-card.critical {
+  border-color: #fecdca;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(240, 68, 56, 0.055),
+      transparent 32%
+    ),
+    #ffffff;
+}
+
+.pressure-card.warning {
+  border-color: #fedf89;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(247, 144, 9, 0.055),
+      transparent 32%
+    ),
+    #ffffff;
+}
+
+.pressure-card.stable {
+  border-color: #abefc6;
+}
+
+.pressure-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.pressure-card-top > svg {
+  flex-shrink: 0;
+}
+
+.pressure-card.critical .pressure-card-top > svg {
+  color: var(--danger);
+}
+
+.pressure-card.warning .pressure-card-top > svg {
+  color: var(--warning);
+}
+
+.pressure-card.stable .pressure-card-top > svg {
+  color: var(--success);
+}
+
+.pressure-department {
+  display: block;
+  color: #667085;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pressure-card h3 {
+  margin: 5px 0 0;
+  color: var(--heading);
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.pressure-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.pressure-metrics > div {
+  min-width: 0;
+  padding: 11px;
+  border-radius: 9px;
+  background: #f8fafc;
+  border: 1px solid #edf0f4;
+}
+
+.pressure-metrics span {
+  display: block;
+  color: #667085;
+  font-size: 8px;
+  line-height: 1.3;
+}
+
+.pressure-metrics strong {
+  display: block;
+  margin-top: 6px;
+  color: #101828;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.pressure-metrics small {
+  display: block;
+  margin-top: 5px;
+  color: #98a2b3;
+  font-size: 7px;
+  line-height: 1.3;
+}
+
+.pressure-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 13px;
+  padding-top: 11px;
+  border-top: 1px solid #eef1f5;
+}
+
+.pressure-footer span {
+  color: #98a2b3;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.pressure-footer strong {
+  color: var(--danger);
+  font-size: 9px;
+  text-transform: capitalize;
+}
+
+.pressure-card.warning .pressure-footer strong {
+  color: #b54708;
+}
+
+.pressure-card.stable .pressure-footer strong {
+  color: #027a48;
+}
+
+.pressure-empty {
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  text-align: center;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.035);
+}
+
+.pressure-empty svg {
+  color: var(--success);
+}
+
+.pressure-empty strong {
+  color: #344054;
+  font-size: 11px;
+}
+
+.pressure-empty span {
+  max-width: 430px;
+  color: #98a2b3;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1100px) {
+  .pressure-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .pressure-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .pressure-card {
+    padding: 15px;
+  }
+}

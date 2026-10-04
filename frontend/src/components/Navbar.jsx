@@ -6,6 +6,7 @@ import {
   BedDouble,
   Lightbulb,
   FlaskConical,
+  Bell,
   LogOut,
 } from "lucide-react";
 
@@ -94,6 +95,17 @@ function Navbar() {
           >
             <FlaskConical size={18} strokeWidth={1.9} />
             <span>What-If Simulation</span>
+          </NavLink>
+
+          {/* Notifications */}
+          <NavLink
+            to="/notifications"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? "active" : ""}`
+            }
+          >
+            <Bell size={18} strokeWidth={1.9} />
+            <span>Notifications</span>
           </NavLink>
 
         </nav>

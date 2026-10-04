@@ -24,6 +24,7 @@ function Dashboard() {
   const [equipment, setEquipment] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [resourcePressure, setResourcePressure] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [systemStatus, setSystemStatus] = useState("Checking...");
@@ -48,6 +49,7 @@ function Dashboard() {
         equipmentResponse,
         recommendationsResponse,
         alertsResponse,
+        resourcePressureResponse,
       ] = await Promise.all([
         api.get("/hello"),
         api.get("/patients"),
@@ -56,6 +58,7 @@ function Dashboard() {
         api.get("/equipment"),
         api.get("/recommendations/pending"),
         api.get("/alerts"),
+        api.get("/recommendations/resource-pressure"),
       ]);
 
       setPatients(patientsResponse.data || []);
@@ -64,6 +67,9 @@ function Dashboard() {
       setEquipment(equipmentResponse.data || []);
       setRecommendations(recommendationsResponse.data || []);
       setAlerts(alertsResponse.data?.alerts || []);
+      setResourcePressure(
+        resourcePressureResponse.data?.pressure || []
+      );
 
       setSystemStatus("Online");
       setSystemMessage(
@@ -557,6 +563,133 @@ function Dashboard() {
               <span>
                 Current hospital resources are not
                 generating any pressure alerts.
+              </span>
+            </div>
+          )}
+        </section>
+
+        {/* =====================================================
+            RESOURCE PRESSURE
+        ===================================================== */}
+
+        <section className="pressure-section">
+          <div className="section-heading">
+            <div>
+              <span>FORECASTED RESOURCE PRESSURE</span>
+              <h2>Next 24-hour operational outlook</h2>
+            </div>
+
+            <div className="live-badge">
+              <Brain size={14} />
+              AI forecast
+            </div>
+          </div>
+
+          {resourcePressure.length > 0 ? (
+            <div className="pressure-grid">
+              {resourcePressure.map((item) => {
+                const status = String(
+                  item.status || "unknown"
+                ).toLowerCase();
+
+                const isCritical =
+                  status === "critical_pressure";
+
+                const isWarning =
+                  status === "warning" ||
+                  status === "moderate_pressure";
+
+                return (
+                  <div
+                    className={`pressure-card ${
+                      isCritical
+                        ? "critical"
+                        : isWarning
+                          ? "warning"
+                          : "stable"
+                    }`}
+                    key={item.department}
+                  >
+                    <div className="pressure-card-top">
+                      <div>
+                        <span className="pressure-department">
+                          {item.department}
+                        </span>
+
+                        <h3>
+                          {isCritical
+                            ? "Critical pressure"
+                            : isWarning
+                              ? "Elevated pressure"
+                              : "Stable capacity"}
+                        </h3>
+                      </div>
+
+                      {isCritical ? (
+                        <AlertTriangle size={20} />
+                      ) : isWarning ? (
+                        <Siren size={20} />
+                      ) : (
+                        <CheckCircle2 size={20} />
+                      )}
+                    </div>
+
+                    <div className="pressure-metrics">
+                      <div>
+                        <span>Predicted arrivals</span>
+                        <strong>
+                          {Number(
+                            item.predicted_24h_arrivals || 0
+                          ).toFixed(2)}
+                        </strong>
+                        <small>next 24 hours</small>
+                      </div>
+
+                      <div>
+                        <span>Peak hourly demand</span>
+                        <strong>
+                          {Number(
+                            item.peak_hourly_demand || 0
+                          ).toFixed(2)}
+                        </strong>
+                        <small>patients / hour</small>
+                      </div>
+
+                      <div>
+                        <span>Available beds</span>
+                        <strong>
+                          {item.available_beds ?? 0}
+                        </strong>
+                        <small>
+                          {item.occupied_beds ?? 0} occupied /{" "}
+                          {item.total_beds ?? 0} total
+                        </small>
+                      </div>
+                    </div>
+
+                    <div className="pressure-footer">
+                      <span>FORECAST STATUS</span>
+                      <strong>
+                        {String(
+                          item.status || "unknown"
+                        ).replaceAll("_", " ")}
+                      </strong>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="pressure-empty">
+              <CheckCircle2 size={28} />
+
+              <strong>
+                No resource pressure forecast available
+              </strong>
+
+              <span>
+                Forecast data will appear when the resource
+                pressure service returns operational predictions.
               </span>
             </div>
           )}
