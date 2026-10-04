@@ -11,6 +11,7 @@ import {
   XCircle,
   Pencil,
   X,
+  History,
 } from "lucide-react";
 
 import api from "../services/api";
@@ -18,9 +19,15 @@ import "./Recommendations.css";
 
 function Recommendations() {
   const [recommendations, setRecommendations] = useState([]);
+  const [decisionHistory, setDecisionHistory] = useState([]);
+
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
   const [refreshing, setRefreshing] = useState(false);
+
   const [error, setError] = useState("");
+  const [historyError, setHistoryError] = useState("");
   const [success, setSuccess] = useState("");
 
   const [processingId, setProcessingId] = useState(null);
@@ -34,6 +41,10 @@ function Recommendations() {
     modified_equipment_id: "",
     reason: "",
   });
+
+  // =========================================================
+  // FETCH PENDING RECOMMENDATIONS
+  // =========================================================
 
   const fetchRecommendations = async (showRefresh = false) => {
     try {
@@ -70,9 +81,52 @@ function Recommendations() {
     }
   };
 
+  // =========================================================
+  // FETCH DECISION HISTORY
+  // =========================================================
+
+  const fetchDecisionHistory = async () => {
+    try {
+      setHistoryLoading(true);
+      setHistoryError("");
+
+      /*
+       * Currently P106 has a verified decision history.
+       * We use the patient-specific endpoint and keep the
+       * existing backend API unchanged.
+       */
+      const response = await api.get(
+        "/recommendations/patient/P106/decision-history"
+      );
+
+      setDecisionHistory(
+        Array.isArray(response.data)
+          ? response.data
+          : []
+      );
+    } catch (err) {
+      console.error(
+        "Failed to fetch decision history:",
+        err
+      );
+
+      setHistoryError(
+        err?.response?.data?.detail ||
+          "Unable to load decision history."
+      );
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchRecommendations();
+    fetchDecisionHistory();
   }, []);
+
+  // =========================================================
+  // APPROVE
+  // =========================================================
 
   const approveRecommendation = async (
     recommendationId
@@ -91,6 +145,7 @@ function Recommendations() {
       );
 
       await fetchRecommendations(true);
+      await fetchDecisionHistory();
     } catch (err) {
       console.error(
         "Failed to approve recommendation:",
@@ -105,6 +160,10 @@ function Recommendations() {
       setProcessingId(null);
     }
   };
+
+  // =========================================================
+  // REJECT
+  // =========================================================
 
   const rejectRecommendation = async (
     recommendationId
@@ -123,6 +182,7 @@ function Recommendations() {
       );
 
       await fetchRecommendations(true);
+      await fetchDecisionHistory();
     } catch (err) {
       console.error(
         "Failed to reject recommendation:",
@@ -138,6 +198,10 @@ function Recommendations() {
     }
   };
 
+  // =========================================================
+  // MODIFY
+  // =========================================================
+
   const openModifyModal = (recommendation) => {
     setError("");
     setSuccess("");
@@ -147,10 +211,13 @@ function Recommendations() {
     setModifyForm({
       modified_bed_id:
         recommendation.recommended_bed_id || "",
+
       modified_staff_id:
         recommendation.recommended_staff_id || "",
+
       modified_equipment_id:
         recommendation.recommended_equipment_id || "",
+
       reason: "",
     });
   };
@@ -215,6 +282,7 @@ function Recommendations() {
       );
 
       await fetchRecommendations(true);
+      await fetchDecisionHistory();
     } catch (err) {
       console.error(
         "Failed to modify recommendation:",
@@ -230,11 +298,36 @@ function Recommendations() {
     }
   };
 
+  // =========================================================
+  // FORMAT DATE
+  // =========================================================
+
+  const formatDecisionDate = (dateValue) => {
+    if (!dateValue) {
+      return "Not available";
+    }
+
+    const date = new Date(dateValue);
+
+    if (Number.isNaN(date.getTime())) {
+      return dateValue;
+    }
+
+    return date.toLocaleString();
+  };
+
+  // =========================================================
+  // RENDER
+  // =========================================================
+
   return (
     <main className="recommendations-page">
       <div className="recommendations-content">
 
-        {/* HEADER */}
+        {/* =================================================
+            HEADER
+        ================================================= */}
+
         <section className="recommendations-header">
 
           <div>
@@ -254,7 +347,10 @@ function Recommendations() {
 
           <button
             className="recommendations-refresh"
-            onClick={() => fetchRecommendations(true)}
+            onClick={async () => {
+              await fetchRecommendations(true);
+              await fetchDecisionHistory();
+            }}
             disabled={refreshing}
           >
             <RefreshCw
@@ -269,23 +365,30 @@ function Recommendations() {
 
         </section>
 
-        {/* SUMMARY */}
+        {/* =================================================
+            SUMMARY
+        ================================================= */}
+
         <section className="recommendation-stats">
 
           <div className="recommendation-stat-card">
+
             <div className="recommendation-stat-icon amber">
               <Clock3 size={19} />
             </div>
 
             <div>
               <span>Pending Decisions</span>
+
               <strong>
                 {recommendations.length}
               </strong>
             </div>
+
           </div>
 
           <div className="recommendation-stat-card">
+
             <div className="recommendation-stat-icon green">
               <UserRoundCheck size={19} />
             </div>
@@ -299,47 +402,71 @@ function Recommendations() {
                   : "Clear"}
               </strong>
             </div>
+
           </div>
 
           <div className="recommendation-stat-card">
+
             <div className="recommendation-stat-icon blue">
               <Lightbulb size={19} />
             </div>
 
             <div>
               <span>Decision Model</span>
-              <strong>AI + Human</strong>
+
+              <strong>
+                AI + Human
+              </strong>
             </div>
+
           </div>
 
         </section>
 
-        {/* ERROR */}
+        {/* =================================================
+            ERROR
+        ================================================= */}
+
         {error && (
           <div className="recommendations-error">
             {error}
           </div>
         )}
 
-        {/* SUCCESS */}
+        {/* =================================================
+            SUCCESS
+        ================================================= */}
+
         {success && (
           <div className="recommendations-success">
+
             <CheckCircle2 size={16} />
-            <span>{success}</span>
+
+            <span>
+              {success}
+            </span>
+
           </div>
         )}
 
-        {/* SECTION */}
+        {/* =================================================
+            PENDING RECOMMENDATIONS
+        ================================================= */}
+
         <section className="recommendations-section">
 
           <div className="recommendations-section-heading">
 
             <div>
-              <span>HUMAN-IN-THE-LOOP</span>
+
+              <span>
+                HUMAN-IN-THE-LOOP
+              </span>
 
               <h2>
                 Pending recommendations
               </h2>
+
             </div>
 
             {recommendations.length > 0 && (
@@ -351,7 +478,9 @@ function Recommendations() {
           </div>
 
           {/* LOADING */}
+
           {loading ? (
+
             <div className="recommendations-empty">
 
               <Clock3 size={30} />
@@ -366,9 +495,11 @@ function Recommendations() {
               </p>
 
             </div>
+
           ) : recommendations.length === 0 ? (
 
             /* EMPTY */
+
             <div className="recommendations-empty">
 
               <div className="empty-check">
@@ -386,12 +517,15 @@ function Recommendations() {
               </p>
 
             </div>
+
           ) : (
 
             /* CARDS */
+
             <div className="recommendation-list">
 
               {recommendations.map((recommendation) => {
+
                 const isProcessing =
                   processingId ===
                   recommendation.recommendation_id;
@@ -399,7 +533,9 @@ function Recommendations() {
                 return (
                   <article
                     className="recommendation-card"
-                    key={recommendation.recommendation_id}
+                    key={
+                      recommendation.recommendation_id
+                    }
                   >
 
                     <div className="recommendation-card-top">
@@ -425,6 +561,7 @@ function Recommendations() {
                     </div>
 
                     {/* RESOURCES */}
+
                     <div className="recommended-resources">
 
                       <div className="recommended-resource">
@@ -432,6 +569,7 @@ function Recommendations() {
                         <BedDouble size={18} />
 
                         <div>
+
                           <span>
                             Recommended Bed
                           </span>
@@ -440,6 +578,7 @@ function Recommendations() {
                             {recommendation.recommended_bed_id ||
                               "Not specified"}
                           </strong>
+
                         </div>
 
                       </div>
@@ -449,6 +588,7 @@ function Recommendations() {
                         <UserRound size={18} />
 
                         <div>
+
                           <span>
                             Recommended Staff
                           </span>
@@ -457,6 +597,7 @@ function Recommendations() {
                             {recommendation.recommended_staff_id ||
                               "Not specified"}
                           </strong>
+
                         </div>
 
                       </div>
@@ -466,6 +607,7 @@ function Recommendations() {
                         <Microscope size={18} />
 
                         <div>
+
                           <span>
                             Equipment
                           </span>
@@ -474,6 +616,7 @@ function Recommendations() {
                             {recommendation.recommended_equipment_id ||
                               "Not specified"}
                           </strong>
+
                         </div>
 
                       </div>
@@ -481,9 +624,12 @@ function Recommendations() {
                     </div>
 
                     {/* REASON */}
+
                     <div className="recommendation-reason">
 
-                      <span>WHY THIS ACTION</span>
+                      <span>
+                        WHY THIS ACTION
+                      </span>
 
                       <p>
                         {recommendation.reason ||
@@ -493,6 +639,7 @@ function Recommendations() {
                     </div>
 
                     {/* ACTIONS */}
+
                     <div className="recommendation-actions">
 
                       <button
@@ -505,10 +652,13 @@ function Recommendations() {
                           )
                         }
                       >
+
                         <XCircle size={15} />
+
                         {isProcessing
                           ? "Processing..."
                           : "Reject"}
+
                       </button>
 
                       <button
@@ -521,8 +671,11 @@ function Recommendations() {
                           )
                         }
                       >
+
                         <Pencil size={15} />
+
                         Modify
+
                       </button>
 
                       <button
@@ -535,11 +688,13 @@ function Recommendations() {
                           )
                         }
                       >
+
                         <CheckCircle2 size={15} />
 
                         {isProcessing
                           ? "Processing..."
                           : "Approve"}
+
                       </button>
 
                     </div>
@@ -553,26 +708,208 @@ function Recommendations() {
 
         </section>
 
+        {/* =================================================
+            DECISION HISTORY
+        ================================================= */}
+
+        <section className="recommendations-section decision-history-section">
+
+          <div className="recommendations-section-heading">
+
+            <div>
+
+              <span>
+                AUDIT TRAIL
+              </span>
+
+              <h2>
+                Decision History
+              </h2>
+
+            </div>
+
+            <div className="decision-history-heading-icon">
+              <History size={19} />
+            </div>
+
+          </div>
+
+          {historyError && (
+            <div className="recommendations-error">
+              {historyError}
+            </div>
+          )}
+
+          {historyLoading ? (
+
+            <div className="recommendations-empty">
+
+              <Clock3 size={30} />
+
+              <h3>
+                Loading decision history
+              </h3>
+
+              <p>
+                Fetching previously recorded human decisions.
+              </p>
+
+            </div>
+
+          ) : decisionHistory.length === 0 ? (
+
+            <div className="recommendations-empty">
+
+              <History size={30} />
+
+              <h3>
+                No decision history
+              </h3>
+
+              <p>
+                No human decisions have been recorded yet.
+              </p>
+
+            </div>
+
+          ) : (
+
+            <div className="decision-history-list">
+
+              {decisionHistory.map((decision) => (
+
+                <article
+                  className="decision-history-card"
+                  key={decision.decision_id}
+                >
+
+                  <div className="decision-history-main">
+
+                    <div className="decision-history-icon">
+                      <History size={18} />
+                    </div>
+
+                    <div>
+
+                      <span className="decision-history-label">
+                        Patient
+                      </span>
+
+                      <strong>
+                        {decision.patient_id}
+                      </strong>
+
+                    </div>
+
+                  </div>
+
+                  <div className="decision-history-field">
+
+                    <span>
+                      Decision
+                    </span>
+
+                    <strong
+                      className={`decision-badge ${
+                        decision.decision || ""
+                      }`}
+                    >
+                      {decision.decision || "Unknown"}
+                    </strong>
+
+                  </div>
+
+                  <div className="decision-history-field">
+
+                    <span>
+                      Recommended Bed
+                    </span>
+
+                    <strong>
+                      {decision.recommended_bed_id ||
+                        "Not specified"}
+                    </strong>
+
+                  </div>
+
+                  <div className="decision-history-field">
+
+                    <span>
+                      Modified Bed
+                    </span>
+
+                    <strong>
+                      {decision.modified_bed_id ||
+                        "—"}
+                    </strong>
+
+                  </div>
+
+                  <div className="decision-history-field decision-history-reason">
+
+                    <span>
+                      Reason
+                    </span>
+
+                    <strong>
+                      {decision.reason ||
+                        "No reason recorded"}
+                    </strong>
+
+                  </div>
+
+                  <div className="decision-history-field">
+
+                    <span>
+                      Decision Time
+                    </span>
+
+                    <strong>
+                      {formatDecisionDate(
+                        decision.created_at
+                      )}
+                    </strong>
+
+                  </div>
+
+                </article>
+
+              ))}
+
+            </div>
+
+          )}
+
+        </section>
+
       </div>
 
-      {/* MODIFY MODAL */}
+      {/* ===================================================
+          MODIFY MODAL
+      =================================================== */}
+
       {modifyRecommendation && (
+
         <div
           className="modify-modal-overlay"
           onMouseDown={(event) => {
+
             if (
               event.target === event.currentTarget &&
               !processingId
             ) {
               closeModifyModal();
             }
+
           }}
         >
+
           <div className="modify-modal">
 
             <div className="modify-modal-header">
 
               <div>
+
                 <span>
                   HUMAN OVERRIDE
                 </span>
@@ -585,6 +922,7 @@ function Recommendations() {
                   Patient{" "}
                   {modifyRecommendation.patient_id}
                 </p>
+
               </div>
 
               <button
@@ -603,7 +941,10 @@ function Recommendations() {
               <div className="modify-form-grid">
 
                 <label>
-                  <span>Bed ID</span>
+
+                  <span>
+                    Bed ID
+                  </span>
 
                   <input
                     type="text"
@@ -614,10 +955,14 @@ function Recommendations() {
                     onChange={handleModifyChange}
                     placeholder="e.g. B101"
                   />
+
                 </label>
 
                 <label>
-                  <span>Staff ID</span>
+
+                  <span>
+                    Staff ID
+                  </span>
 
                   <input
                     type="text"
@@ -628,10 +973,14 @@ function Recommendations() {
                     onChange={handleModifyChange}
                     placeholder="e.g. S101"
                   />
+
                 </label>
 
                 <label>
-                  <span>Equipment ID</span>
+
+                  <span>
+                    Equipment ID
+                  </span>
 
                   <input
                     type="text"
@@ -642,10 +991,14 @@ function Recommendations() {
                     onChange={handleModifyChange}
                     placeholder="e.g. E201"
                   />
+
                 </label>
 
                 <label className="modify-reason-field">
-                  <span>Reason for modification</span>
+
+                  <span>
+                    Reason for modification
+                  </span>
 
                   <textarea
                     name="reason"
@@ -654,6 +1007,7 @@ function Recommendations() {
                     placeholder="Explain why the recommendation is being changed..."
                     rows={4}
                   />
+
                 </label>
 
               </div>
@@ -681,11 +1035,13 @@ function Recommendations() {
                     )
                   }
                 >
+
                   <CheckCircle2 size={15} />
 
                   {processingId
                     ? "Saving..."
                     : "Save Modification"}
+
                 </button>
 
               </div>
@@ -693,7 +1049,9 @@ function Recommendations() {
             </form>
 
           </div>
+
         </div>
+
       )}
 
     </main>
