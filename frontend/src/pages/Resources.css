@@ -582,3 +582,50 @@
     font-size: 28px;
   }
 }
+/* =========================================================
+   BED TURNOVER ACTION
+========================================================= */
+
+.bed-turnover-button {
+  min-height: 28px;
+
+  padding: 0 10px;
+
+  border: 1px solid #d0d5dd;
+
+  border-radius: 6px;
+
+  background: #ffffff;
+
+  color: #344054;
+
+  font-size: 9px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  white-space: nowrap;
+
+  transition: 0.2s;
+}
+
+.bed-turnover-button:hover {
+  border-color: #2563eb;
+
+  background: #f8fbff;
+
+  color: #2563eb;
+}
+
+.bed-turnover-button:disabled {
+  opacity: 0.6;
+
+  cursor: not-allowed;
+}
+
+.resource-action-muted {
+  color: #98a2b3;
+
+  font-size: 10px;
+}

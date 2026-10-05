@@ -20,6 +20,8 @@ function Resources() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [turningOverBedId, setTurningOverBedId] = useState(null);
+  const [turnoverError, setTurnoverError] = useState("");
 
   useEffect(() => {
     loadResources();
@@ -58,6 +60,29 @@ function Resources() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const handleTurnoverComplete = async (bed) => {
+    const confirmed = window.confirm(
+      `Complete turnover for bed ${bed.bed_id}? This will make the bed available.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setTurningOverBedId(bed.bed_id);
+      setTurnoverError("");
+      await api.put(`/beds/${bed.bed_id}/turnover-complete`);
+      await loadResources(true);
+    } catch (err) {
+      console.error("Bed turnover completion failed:", err);
+      setTurnoverError(
+        err?.response?.data?.detail ||
+          `Unable to complete turnover for bed ${bed.bed_id}.`
+      );
+    } finally {
+      setTurningOverBedId(null);
     }
   };
 
@@ -310,6 +335,14 @@ function Resources() {
           </div>
         )}
 
+        {turnoverError && (
+          <div className="resources-error">
+            <AlertCircle size={17} />
+            <span>{turnoverError}</span>
+          </div>
+        )}
+
+
         {/* =================================================
             RESOURCE SUMMARY
         ================================================= */}
@@ -376,6 +409,7 @@ function Resources() {
                     <th>STATUS</th>
                     <th>PATIENT</th>
                     <th>EXPECTED RELEASE</th>
+                    <th>ACTION</th>
                   </tr>
                 </thead>
 
@@ -412,6 +446,30 @@ function Resources() {
                       <td>
                         {bed.expected_release_at ||
                           "—"}
+                      </td>
+
+                      <td>
+                        {String(bed.status).toLowerCase() ===
+                        "turnover_required" ? (
+                          <button
+                            type="button"
+                            className="bed-turnover-button"
+                            onClick={() =>
+                              handleTurnoverComplete(bed)
+                            }
+                            disabled={
+                              turningOverBedId === bed.bed_id
+                            }
+                          >
+                            {turningOverBedId === bed.bed_id
+                              ? "Completing..."
+                              : "Complete Turnover"}
+                          </button>
+                        ) : (
+                          <span className="resource-action-muted">
+                            —
+                          </span>
+                        )}
                       </td>
 
                     </tr>
