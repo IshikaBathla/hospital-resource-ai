@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+
 import {
   Users,
   Clock3,
@@ -9,6 +10,9 @@ import {
   BedDouble,
   UserRound,
   MonitorCog,
+  Plus,
+  X,
+  Siren,
 } from "lucide-react";
 
 import api from "../services/api";
@@ -28,6 +32,27 @@ function Patients() {
 
   const [dischargingPatientId, setDischargingPatientId] = useState("");
   const [dischargeError, setDischargeError] = useState("");
+
+  /* =========================================================
+     PATIENT ARRIVAL
+  ========================================================= */
+
+  const [showArrivalForm, setShowArrivalForm] = useState(false);
+  const [arrivalSubmitting, setArrivalSubmitting] = useState(false);
+  const [arrivalError, setArrivalError] = useState("");
+  const [arrivalResult, setArrivalResult] = useState(null);
+
+  const [arrivalForm, setArrivalForm] = useState({
+    patient_id: "",
+    name: "",
+    age: "",
+    emergency_level: "high",
+    status: "waiting",
+  });
+
+  /* =========================================================
+     FETCH PATIENTS
+  ========================================================= */
 
   const fetchPatients = async (showRefresh = false) => {
     try {
@@ -69,6 +94,10 @@ function Patients() {
     }
   };
 
+  /* =========================================================
+     DISCHARGE
+  ========================================================= */
+
   const handleDischarge = async (patient) => {
     const confirmed = window.confirm(
       `Discharge ${patient.name} (${patient.patient_id})?\n\n` +
@@ -83,7 +112,9 @@ function Patients() {
       setDischargeError("");
       setDischargingPatientId(patient.patient_id);
 
-      await api.post(`/patients/${patient.patient_id}/discharge`);
+      await api.post(
+        `/patients/${patient.patient_id}/discharge`
+      );
 
       await fetchPatients(true);
     } catch (err) {
@@ -98,9 +129,106 @@ function Patients() {
     }
   };
 
+  /* =========================================================
+     PATIENT ARRIVAL FORM
+  ========================================================= */
+
+  const handleArrivalInputChange = (event) => {
+    const { name, value } = event.target;
+
+    setArrivalForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
+  const openArrivalForm = () => {
+    setArrivalError("");
+    setArrivalResult(null);
+
+    setArrivalForm({
+      patient_id: "",
+      name: "",
+      age: "",
+      emergency_level: "high",
+      status: "waiting",
+    });
+
+    setShowArrivalForm(true);
+  };
+
+  const closeArrivalForm = () => {
+    if (arrivalSubmitting) {
+      return;
+    }
+
+    setShowArrivalForm(false);
+    setArrivalError("");
+  };
+
+  const handlePatientArrival = async (event) => {
+    event.preventDefault();
+
+    setArrivalError("");
+    setArrivalResult(null);
+
+    const patientId = arrivalForm.patient_id.trim();
+    const patientName = arrivalForm.name.trim();
+    const age = Number(arrivalForm.age);
+
+    if (!patientId) {
+      setArrivalError("Patient ID is required.");
+      return;
+    }
+
+    if (!patientName) {
+      setArrivalError("Patient name is required.");
+      return;
+    }
+
+    if (!arrivalForm.age || !Number.isInteger(age) || age <= 0) {
+      setArrivalError("Please enter a valid age.");
+      return;
+    }
+
+    try {
+      setArrivalSubmitting(true);
+
+      const response = await api.post("/events", {
+        event_type: "PATIENT_ARRIVAL",
+        patient: {
+          patient_id: patientId,
+          name: patientName,
+          age,
+          emergency_level: arrivalForm.emergency_level,
+          status: "waiting",
+        },
+      });
+
+      const result = response.data;
+
+      setArrivalResult(result);
+
+      await fetchPatients(true);
+    } catch (err) {
+      console.error("Patient arrival failed:", err);
+
+      setArrivalError(
+        err?.response?.data?.detail ||
+          "Unable to process patient arrival."
+      );
+    } finally {
+      setArrivalSubmitting(false);
+    }
+  };
+
   useEffect(() => {
     fetchPatients();
   }, []);
+
+  /* =========================================================
+     ASSIGNMENT MAP
+  ========================================================= */
 
   const assignmentMap = useMemo(() => {
     const map = {};
@@ -111,6 +239,10 @@ function Patients() {
 
     return map;
   }, [assignments]);
+
+  /* =========================================================
+     FILTERED PATIENTS
+  ========================================================= */
 
   const filteredPatients = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -143,6 +275,10 @@ function Patients() {
     });
   }, [patients, search, priority, status]);
 
+  /* =========================================================
+     STATS
+  ========================================================= */
+
   const totalPatients = patients.length;
 
   const waitingPatients = patients.filter(
@@ -160,6 +296,10 @@ function Patients() {
       String(patient.emergency_level || "").toLowerCase() ===
       "critical"
   ).length;
+
+  /* =========================================================
+     HELPERS
+  ========================================================= */
 
   const getPriorityClass = (level) => {
     const value = String(level || "").toLowerCase();
@@ -179,6 +319,10 @@ function Patients() {
 
     return "other";
   };
+
+  /* =========================================================
+     OPERATIONAL STATE
+  ========================================================= */
 
   const renderOperationalState = (patient) => {
     const patientStatus = String(
@@ -257,9 +401,17 @@ function Patients() {
     );
   };
 
+  /* =========================================================
+     RENDER
+  ========================================================= */
+
   return (
     <main className="patients-page">
       <div className="patients-content">
+
+        {/* =====================================================
+            HEADER
+        ===================================================== */}
 
         <section className="patients-header">
           <div>
@@ -276,19 +428,272 @@ function Patients() {
             </p>
           </div>
 
-          <button
-            className="patients-refresh"
-            onClick={() => fetchPatients(true)}
-            disabled={refreshing}
-          >
-            <RefreshCw
-              size={17}
-              className={refreshing ? "spin" : ""}
-            />
+          <div className="patients-header-actions">
+            <button
+              type="button"
+              className="patient-arrival-button"
+              onClick={openArrivalForm}
+            >
+              <Plus size={17} />
+              Patient Arrival
+            </button>
 
-            {refreshing ? "Refreshing..." : "Refresh"}
-          </button>
+            <button
+              className="patients-refresh"
+              onClick={() => fetchPatients(true)}
+              disabled={refreshing}
+            >
+              <RefreshCw
+                size={17}
+                className={refreshing ? "spin" : ""}
+              />
+
+              {refreshing ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
         </section>
+
+        {/* =====================================================
+            PATIENT ARRIVAL FORM
+        ===================================================== */}
+
+        {showArrivalForm && (
+          <section className="patient-arrival-card">
+            <div className="patient-arrival-header">
+              <div>
+                <div className="patient-arrival-eyebrow">
+                  <Siren size={15} />
+                  <span>EMERGENCY INTAKE</span>
+                </div>
+
+                <h2>Patient Arrival</h2>
+
+                <p>
+                  Register a new arrival and generate an
+                  AI-assisted resource recommendation.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="patient-arrival-close"
+                onClick={closeArrivalForm}
+                disabled={arrivalSubmitting}
+                aria-label="Close patient arrival form"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              className="patient-arrival-form"
+              onSubmit={handlePatientArrival}
+            >
+              <div className="patient-arrival-field">
+                <label htmlFor="patient_id">
+                  Patient ID
+                </label>
+
+                <input
+                  id="patient_id"
+                  name="patient_id"
+                  type="text"
+                  placeholder="e.g. EVT-003"
+                  value={arrivalForm.patient_id}
+                  onChange={handleArrivalInputChange}
+                  disabled={arrivalSubmitting}
+                />
+              </div>
+
+              <div className="patient-arrival-field">
+                <label htmlFor="name">
+                  Patient Name
+                </label>
+
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  placeholder="e.g. Raj Kumar"
+                  value={arrivalForm.name}
+                  onChange={handleArrivalInputChange}
+                  disabled={arrivalSubmitting}
+                />
+              </div>
+
+              <div className="patient-arrival-field">
+                <label htmlFor="age">
+                  Age
+                </label>
+
+                <input
+                  id="age"
+                  name="age"
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 65"
+                  value={arrivalForm.age}
+                  onChange={handleArrivalInputChange}
+                  disabled={arrivalSubmitting}
+                />
+              </div>
+
+              <div className="patient-arrival-field">
+                <label htmlFor="emergency_level">
+                  Emergency Level
+                </label>
+
+                <select
+                  id="emergency_level"
+                  name="emergency_level"
+                  value={arrivalForm.emergency_level}
+                  onChange={handleArrivalInputChange}
+                  disabled={arrivalSubmitting}
+                >
+                  <option value="critical">Critical</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+
+              <div className="patient-arrival-field">
+                <label htmlFor="arrival_status">
+                  Initial Status
+                </label>
+
+                <input
+                  id="arrival_status"
+                  type="text"
+                  value="Waiting"
+                  disabled
+                />
+              </div>
+
+              <div className="patient-arrival-actions">
+                <button
+                  type="button"
+                  className="patient-arrival-cancel"
+                  onClick={closeArrivalForm}
+                  disabled={arrivalSubmitting}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="patient-arrival-submit"
+                  disabled={arrivalSubmitting}
+                >
+                  {arrivalSubmitting
+                    ? "Processing Arrival..."
+                    : "Process Arrival"}
+                </button>
+              </div>
+            </form>
+
+            {arrivalError && (
+              <div className="patient-arrival-error">
+                {arrivalError}
+              </div>
+            )}
+
+            {arrivalResult && (
+              <div className="patient-arrival-result">
+                <div className="patient-arrival-result-title">
+                  <CircleCheck size={18} />
+                  <strong>Patient Arrival Processed</strong>
+                </div>
+
+                <div className="patient-arrival-result-grid">
+                  <div>
+                    <span>Patient</span>
+                    <strong>
+                      {arrivalResult.event?.name || "—"}
+                    </strong>
+                    <small>
+                      {arrivalResult.event?.patient_id || "—"}
+                    </small>
+                  </div>
+
+                  <div>
+                    <span>Recommendation</span>
+                    <strong>
+                      #
+                      {arrivalResult.resource_coordination
+                        ?.recommendation_id || "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Recommended Bed</span>
+                    <strong>
+                      {arrivalResult.resource_coordination
+                        ?.recommended_resources?.bed_id || "None"}
+                    </strong>
+                    <small>
+                      {arrivalResult.resource_coordination
+                        ?.recommended_resources?.ward || "—"}
+                    </small>
+                  </div>
+
+                  <div>
+                    <span>Staff</span>
+                    <strong>
+                      {arrivalResult.resource_coordination
+                        ?.resource_status?.staff ===
+                      "staff_required"
+                        ? "Required"
+                        : arrivalResult.resource_coordination
+                              ?.resource_status?.staff ||
+                          "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Equipment</span>
+                    <strong>
+                      {arrivalResult.resource_coordination
+                        ?.resource_status?.equipment ||
+                        "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Human Decision</span>
+                    <strong>
+                      {arrivalResult.resource_coordination
+                        ?.human_decision_required
+                        ? "Required"
+                        : "Not required"}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="patient-arrival-result-note">
+                  Resources remain unchanged until the
+                  recommendation is approved by an authorized
+                  human decision-maker.
+                </div>
+
+                <button
+                  type="button"
+                  className="patient-arrival-done"
+                  onClick={() => {
+                    setShowArrivalForm(false);
+                    setArrivalResult(null);
+                  }}
+                >
+                  Done
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* =====================================================
+            STATS
+        ===================================================== */}
 
         <section className="patients-stats">
 
@@ -338,6 +743,10 @@ function Patients() {
 
         </section>
 
+        {/* =====================================================
+            FILTERS
+        ===================================================== */}
+
         <section className="patients-filter-bar">
 
           <div className="patient-search">
@@ -379,6 +788,10 @@ function Patients() {
 
         </section>
 
+        {/* =====================================================
+            ERRORS
+        ===================================================== */}
+
         {error && (
           <div className="patients-error">
             {error}
@@ -390,6 +803,10 @@ function Patients() {
             {dischargeError}
           </div>
         )}
+
+        {/* =====================================================
+            PATIENT TABLE
+        ===================================================== */}
 
         <section className="patients-table-card">
 
@@ -420,6 +837,7 @@ function Patients() {
             </div>
           ) : (
             <div className="patients-table-scroll">
+
               <table className="patients-table">
 
                 <thead>
@@ -434,6 +852,7 @@ function Patients() {
                 </thead>
 
                 <tbody>
+
                   {filteredPatients.map((patient) => (
                     <tr key={patient.patient_id}>
 
@@ -478,18 +897,22 @@ function Patients() {
                       </td>
 
                       <td>
-                        {String(patient.status || "").toLowerCase() ===
-                        "admitted" ? (
+                        {String(
+                          patient.status || ""
+                        ).toLowerCase() === "admitted" ? (
                           <button
                             type="button"
                             className="patient-discharge-button"
-                            onClick={() => handleDischarge(patient)}
+                            onClick={() =>
+                              handleDischarge(patient)
+                            }
                             disabled={
                               dischargingPatientId ===
                               patient.patient_id
                             }
                           >
-                            {dischargingPatientId === patient.patient_id
+                            {dischargingPatientId ===
+                            patient.patient_id
                               ? "Discharging..."
                               : "Discharge"}
                           </button>
@@ -502,15 +925,18 @@ function Patients() {
 
                     </tr>
                   ))}
+
                 </tbody>
 
               </table>
+
             </div>
           )}
 
         </section>
 
       </div>
+
     </main>
   );
 }

@@ -28,6 +28,130 @@ function Notifications() {
     fetchNotifications();
   }, []);
 
+  /* =========================================================
+     REAL-TIME NOTIFICATION MONITORING
+  ========================================================= */
+
+  useEffect(() => {
+    const socket = new WebSocket(
+      "ws://127.0.0.1:8000/ws/notifications"
+    );
+
+    socket.onopen = () => {
+      console.log(
+        "Live notification connection established."
+      );
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const realtimeNotification = JSON.parse(
+          event.data
+        );
+
+        console.log(
+          "Real-time notification received:",
+          realtimeNotification
+        );
+
+        const notificationId =
+          realtimeNotification.notification_id;
+
+        if (!notificationId) {
+          return;
+        }
+
+        setNotifications((previousNotifications) => {
+          const alreadyExists =
+            previousNotifications.some(
+              (notification) =>
+                notification.notification_id ===
+                notificationId
+            );
+
+          if (alreadyExists) {
+            return previousNotifications;
+          }
+
+          const newNotification = {
+            notification_id:
+              notificationId,
+
+            notification_type:
+              realtimeNotification.notification_type ||
+              "SYSTEM_ALERT",
+
+            severity:
+              realtimeNotification.severity ||
+              "WARNING",
+
+            title:
+              realtimeNotification.title ||
+              "New operational notification",
+
+            message:
+              realtimeNotification.message ||
+              "A new hospital operational event requires attention.",
+
+            department:
+              realtimeNotification.department ||
+              realtimeNotification.recommendation
+                ?.recommended_ward ||
+              null,
+
+            patient_id:
+              realtimeNotification.patient
+                ?.patient_id ||
+              null,
+
+            recommendation_id:
+              realtimeNotification.recommendation
+                ?.recommendation_id ||
+              null,
+
+            target_role: "COORDINATOR",
+
+            status: "UNREAD",
+
+            created_at:
+              new Date().toISOString(),
+
+            acknowledged_at: null,
+
+            acknowledged_by: null,
+          };
+
+          return [
+            newNotification,
+            ...previousNotifications,
+          ];
+        });
+      } catch (err) {
+        console.error(
+          "Invalid real-time notification:",
+          err
+        );
+      }
+    };
+
+    socket.onerror = (event) => {
+      console.error(
+        "Live notification connection error:",
+        event
+      );
+    };
+
+    socket.onclose = () => {
+      console.log(
+        "Live notification connection closed."
+      );
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, []);
+
   const handleAcknowledge = async (notificationId) => {
     try {
       setAcknowledgingId(notificationId);
@@ -38,7 +162,10 @@ function Notifications() {
 
       await fetchNotifications();
     } catch (err) {
-      console.error("Failed to acknowledge notification:", err);
+      console.error(
+        "Failed to acknowledge notification:",
+        err
+      );
 
       const message =
         err.response?.data?.detail ||
@@ -51,7 +178,8 @@ function Notifications() {
   };
 
   const unreadCount = notifications.filter(
-    (notification) => notification.status === "UNREAD"
+    (notification) =>
+      notification.status === "UNREAD"
   ).length;
 
   return (
@@ -60,7 +188,8 @@ function Notifications() {
         <div>
           <h1>Notifications</h1>
           <p>
-            Operational alerts and resource coordination updates
+            Operational alerts and resource coordination
+            updates
           </p>
         </div>
 
@@ -68,6 +197,7 @@ function Notifications() {
           <span className="notification-count">
             {unreadCount}
           </span>
+
           <span>Unread</span>
         </div>
       </div>
@@ -85,8 +215,10 @@ function Notifications() {
       ) : notifications.length === 0 ? (
         <div className="notification-empty">
           <h3>No notifications</h3>
+
           <p>
-            There are currently no operational notifications.
+            There are currently no operational
+            notifications.
           </p>
         </div>
       ) : (
@@ -103,12 +235,16 @@ function Notifications() {
               <div className="notification-top">
                 <div className="notification-title-section">
                   <span
-                    className={`severity-badge ${notification.severity?.toLowerCase()}`}
+                    className={`severity-badge ${
+                      notification.severity?.toLowerCase()
+                    }`}
                   >
                     {notification.severity}
                   </span>
 
-                  <h3>{notification.title}</h3>
+                  <h3>
+                    {notification.title}
+                  </h3>
                 </div>
 
                 <span className="notification-status">
@@ -122,8 +258,11 @@ function Notifications() {
 
               <div className="notification-meta">
                 <span>
-                  <strong>Department:</strong>{" "}
-                  {notification.department || "N/A"}
+                  <strong>
+                    Department:
+                  </strong>{" "}
+                  {notification.department ||
+                    "N/A"}
                 </span>
 
                 <span>
@@ -141,11 +280,13 @@ function Notifications() {
                 </span>
               </div>
 
-              {notification.status === "ACKNOWLEDGED" ? (
+              {notification.status ===
+              "ACKNOWLEDGED" ? (
                 <div className="acknowledged-info">
                   ✓ Acknowledged by{" "}
                   <strong>
-                    {notification.acknowledged_by || "User"}
+                    {notification.acknowledged_by ||
+                      "User"}
                   </strong>
                 </div>
               ) : (

@@ -70,7 +70,8 @@ from backend.routers.alerts import (
 from backend.routers.notifications import (
     router as notification_router
 )
-
+from backend.routers import events
+from backend.routers import websocket
 
 # =========================================================
 # APPLICATION LIFESPAN
@@ -210,7 +211,11 @@ app.include_router(
 app.include_router(
     notification_router
 )
+app.include_router(events.router)
 
+app.include_router(
+    websocket.router
+)
 
 # =========================================================
 # HEALTH CHECK
