@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+
+import { useSearchParams } from "react-router-dom";
+
 import {
   Lightbulb,
   RefreshCw,
@@ -15,19 +18,29 @@ import {
 } from "lucide-react";
 
 import api from "../services/api";
+
 import "./Recommendations.css";
 
 function Recommendations() {
+  const [searchParams] = useSearchParams();
+
+  const highlightedRecommendationId =
+    searchParams.get("recommendation");
+
   const [recommendations, setRecommendations] = useState([]);
+
   const [decisionHistory, setDecisionHistory] = useState([]);
 
   const [loading, setLoading] = useState(true);
+
   const [historyLoading, setHistoryLoading] = useState(true);
 
   const [refreshing, setRefreshing] = useState(false);
 
   const [error, setError] = useState("");
+
   const [historyError, setHistoryError] = useState("");
+
   const [success, setSuccess] = useState("");
 
   const [processingId, setProcessingId] = useState(null);
@@ -125,6 +138,40 @@ function Recommendations() {
   }, []);
 
   // =========================================================
+  // FOCUS EXACT RECOMMENDATION FROM NOTIFICATION
+  // =========================================================
+
+  useEffect(() => {
+    if (
+      loading ||
+      !highlightedRecommendationId ||
+      recommendations.length === 0
+    ) {
+      return;
+    }
+
+    const targetRecommendation =
+      document.getElementById(
+        `recommendation-${highlightedRecommendationId}`
+      );
+
+    if (!targetRecommendation) {
+      return;
+    }
+
+    setTimeout(() => {
+      targetRecommendation.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 150);
+  }, [
+    loading,
+    recommendations,
+    highlightedRecommendationId,
+  ]);
+
+  // =========================================================
   // APPROVE
   // =========================================================
 
@@ -133,6 +180,7 @@ function Recommendations() {
   ) => {
     try {
       setProcessingId(recommendationId);
+
       setError("");
       setSuccess("");
 
@@ -170,6 +218,7 @@ function Recommendations() {
   ) => {
     try {
       setProcessingId(recommendationId);
+
       setError("");
       setSuccess("");
 
@@ -530,9 +579,22 @@ function Recommendations() {
                   processingId ===
                   recommendation.recommendation_id;
 
+                const isHighlighted =
+                  String(
+                    recommendation.recommendation_id
+                  ) ===
+                  String(
+                    highlightedRecommendationId
+                  );
+
                 return (
                   <article
-                    className="recommendation-card"
+                    id={`recommendation-${recommendation.recommendation_id}`}
+                    className={`recommendation-card ${
+                      isHighlighted
+                        ? "recommendation-highlighted"
+                        : ""
+                    }`}
                     key={
                       recommendation.recommendation_id
                     }
@@ -554,9 +616,19 @@ function Recommendations() {
 
                       </div>
 
-                      <span className="pending-pill">
-                        Pending Review
-                      </span>
+                      <div className="recommendation-status-group">
+
+                        {isHighlighted && (
+                          <span className="review-focus-pill">
+                            Selected for Review
+                          </span>
+                        )}
+
+                        <span className="pending-pill">
+                          Pending Review
+                        </span>
+
+                      </div>
 
                     </div>
 
@@ -877,7 +949,6 @@ function Recommendations() {
               ))}
 
             </div>
-
           )}
 
         </section>

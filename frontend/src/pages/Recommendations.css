@@ -275,6 +275,42 @@
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   background: #fbfdff;
+  scroll-margin-top: 30px;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+}
+
+/* =========================================================
+   EXACT RECOMMENDATION HIGHLIGHT
+========================================================= */
+
+.recommendation-highlighted {
+  border-color: #2563eb;
+  background: #f8fbff;
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.12),
+    0 10px 30px rgba(37, 99, 235, 0.08);
+  animation: recommendation-highlight-pulse 2s ease-in-out;
+}
+
+@keyframes recommendation-highlight-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(37, 99, 235, 0.35);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 7px rgba(37, 99, 235, 0.12);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 3px rgba(37, 99, 235, 0.12),
+      0 10px 30px rgba(37, 99, 235, 0.08);
+  }
 }
 
 .recommendation-card-top {
@@ -302,6 +338,14 @@
   font-size: 18px;
 }
 
+.recommendation-status-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
 .pending-pill {
   flex-shrink: 0;
   padding: 6px 10px;
@@ -310,6 +354,17 @@
   color: #c2410c;
   font-size: 11px;
   font-weight: 700;
+}
+
+.review-focus-pill {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 750;
 }
 
 /* =========================================================
@@ -793,7 +848,12 @@
     flex-direction: column;
   }
 
-  .pending-pill {
+  .recommendation-status-group {
+    justify-content: flex-start;
+  }
+
+  .pending-pill,
+  .review-focus-pill {
     align-self: flex-start;
   }
 

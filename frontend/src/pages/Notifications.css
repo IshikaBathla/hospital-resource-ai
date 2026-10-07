@@ -1,85 +1,182 @@
+/* =========================================================
+   NOTIFICATIONS PAGE
+========================================================= */
+
 .notifications-page {
   margin-left: 248px;
   width: calc(100% - 248px);
   min-height: 100vh;
-  padding: 32px;
+  padding: 32px 40px 50px;
   background: #f7f9fc;
   box-sizing: border-box;
 }
+
+
+/* =========================================================
+   HEADER
+========================================================= */
 
 .notifications-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 24px;
   margin-bottom: 28px;
 }
 
 .notifications-header h1 {
   margin: 0;
   font-size: 30px;
+  font-weight: 700;
   color: #172033;
 }
 
 .notifications-header p {
-  margin-top: 8px;
+  margin: 8px 0 0;
   color: #6b7280;
   font-size: 14px;
+  line-height: 1.5;
 }
+
+
+/* =========================================================
+   UNREAD SUMMARY
+========================================================= */
 
 .notification-summary {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: white;
-  padding: 12px 18px;
+
+  background: #ffffff;
+
+  padding: 11px 18px;
+
   border-radius: 12px;
   border: 1px solid #e5e7eb;
+
   color: #4b5563;
   font-size: 14px;
+
+  white-space: nowrap;
+
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.03);
 }
 
 .notification-count {
+  min-width: 24px;
+
   font-size: 20px;
+  line-height: 1;
+
   font-weight: 700;
   color: #dc2626;
+
+  text-align: center;
 }
+
+
+/* =========================================================
+   ERROR
+========================================================= */
 
 .notification-error {
   background: #fef2f2;
   color: #b91c1c;
+
   border: 1px solid #fecaca;
+
   padding: 14px 16px;
+
   border-radius: 10px;
+
   margin-bottom: 20px;
+
+  font-size: 14px;
 }
+
+
+/* =========================================================
+   LOADING / EMPTY
+========================================================= */
 
 .notification-loading,
 .notification-empty {
-  background: white;
+  background: #ffffff;
+
   border: 1px solid #e5e7eb;
+
   border-radius: 14px;
+
   padding: 40px;
+
   text-align: center;
+
   color: #6b7280;
+
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.035);
 }
 
 .notification-empty h3 {
   margin: 0 0 8px;
+
   color: #374151;
+
+  font-size: 18px;
 }
+
+.notification-empty p {
+  margin: 0;
+
+  font-size: 14px;
+}
+
+
+/* =========================================================
+   NOTIFICATION LIST
+========================================================= */
 
 .notifications-list {
   display: flex;
+
   flex-direction: column;
-  gap: 18px;
+
+  gap: 16px;
+
+  width: 100%;
 }
 
+
+/* =========================================================
+   NOTIFICATION CARD
+========================================================= */
+
 .notification-card {
-  background: white;
+  width: 100%;
+
+  box-sizing: border-box;
+
+  background: #ffffff;
+
   border: 1px solid #e5e7eb;
+
   border-radius: 14px;
-  padding: 22px;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+
+  padding: 20px 22px;
+
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.04);
+
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.notification-card:hover {
+  box-shadow:
+    0 8px 22px rgba(16, 24, 40, 0.07);
+
+  transform: translateY(-1px);
 }
 
 .notification-card.unread {
@@ -88,34 +185,74 @@
 
 .notification-card.acknowledged {
   border-left: 5px solid #16a34a;
+
   opacity: 0.9;
 }
 
+
+/* =========================================================
+   TOP SECTION
+========================================================= */
+
 .notification-top {
   display: flex;
+
   justify-content: space-between;
+
   align-items: flex-start;
-  gap: 20px;
+
+  gap: 18px;
 }
 
 .notification-title-section {
   display: flex;
+
   align-items: center;
-  gap: 12px;
+
+  gap: 11px;
+
   flex-wrap: wrap;
+
+  min-width: 0;
 }
 
 .notification-title-section h3 {
   margin: 0;
-  font-size: 18px;
+
+  font-size: 19px;
+
+  line-height: 1.35;
+
+  font-weight: 700;
+
   color: #172033;
 }
 
+
+/* =========================================================
+   SEVERITY BADGE
+========================================================= */
+
 .severity-badge {
-  padding: 5px 10px;
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  min-height: 26px;
+
+  padding: 4px 11px;
+
   border-radius: 20px;
+
   font-size: 11px;
+
+  line-height: 1;
+
   font-weight: 700;
+
+  white-space: nowrap;
 }
 
 .severity-badge.critical {
@@ -133,83 +270,356 @@
   color: #a16207;
 }
 
+
+/* =========================================================
+   NOTIFICATION STATUS
+========================================================= */
+
 .notification-status {
+  flex-shrink: 0;
+
   font-size: 11px;
+
+  line-height: 1;
+
   font-weight: 700;
-  padding: 5px 9px;
-  border-radius: 6px;
+
+  padding: 7px 10px;
+
+  border-radius: 7px;
+
   background: #f3f4f6;
+
   color: #4b5563;
 }
 
+
+/* =========================================================
+   MESSAGE
+========================================================= */
+
 .notification-message {
-  margin: 18px 0;
+  margin: 16px 0;
+
   color: #4b5563;
-  line-height: 1.6;
+
+  font-size: 14px;
+
+  line-height: 1.65;
 }
+
+
+/* =========================================================
+   META INFORMATION
+========================================================= */
 
 .notification-meta {
   display: flex;
+
   flex-wrap: wrap;
-  gap: 20px;
-  padding-top: 15px;
+
+  align-items: center;
+
+  gap: 9px 22px;
+
+  padding-top: 14px;
+
   border-top: 1px solid #f0f0f0;
+
   color: #6b7280;
+
   font-size: 13px;
+
+  line-height: 1.5;
 }
 
 .notification-meta strong {
   color: #374151;
+
+  font-weight: 700;
 }
 
+
+/* =========================================================
+   ACTION AREA
+========================================================= */
+
+/*
+   The current JSX uses an inline-styled div for the
+   Review + Acknowledge buttons.
+
+   These rules normalize both buttons so they remain
+   vertically aligned.
+*/
+
+.notification-card > div[style*="marginTop"] {
+  display: flex !important;
+
+  align-items: center !important;
+
+  justify-content: flex-start !important;
+
+  gap: 12px !important;
+
+  flex-wrap: wrap !important;
+
+  margin-top: 18px !important;
+}
+
+
+/* =========================================================
+   REVIEW RECOMMENDATION BUTTON
+========================================================= */
+
+.notification-card > div[style*="marginTop"] button[style] {
+  height: 44px !important;
+
+  min-height: 44px !important;
+
+  box-sizing: border-box !important;
+
+  margin: 0 !important;
+
+  padding: 0 18px !important;
+
+  border: none !important;
+
+  border-radius: 9px !important;
+
+  background: #111827 !important;
+
+  color: #ffffff !important;
+
+  font-size: 13px !important;
+
+  line-height: 1 !important;
+
+  font-weight: 700 !important;
+
+  cursor: pointer !important;
+
+  display: inline-flex !important;
+
+  align-items: center !important;
+
+  justify-content: center !important;
+
+  white-space: nowrap !important;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease !important;
+}
+
+.notification-card > div[style*="marginTop"] button[style]:hover {
+  background: #1f2937 !important;
+
+  transform: translateY(-1px) !important;
+
+  box-shadow:
+    0 4px 10px rgba(17, 24, 39, 0.16) !important;
+}
+
+
+/* =========================================================
+   ACKNOWLEDGE BUTTON
+========================================================= */
+
 .acknowledge-button {
-  margin-top: 18px;
-  padding: 10px 18px;
+  height: 44px;
+
+  min-height: 44px;
+
+  box-sizing: border-box;
+
+  margin: 0 !important;
+
+  padding: 0 18px;
+
   border: none;
-  border-radius: 8px;
+
+  border-radius: 9px;
+
   background: #2563eb;
-  color: white;
+
+  color: #ffffff;
+
   font-size: 13px;
-  font-weight: 600;
+
+  line-height: 1;
+
+  font-weight: 700;
+
   cursor: pointer;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  white-space: nowrap;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .acknowledge-button:hover {
   background: #1d4ed8;
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 4px 10px rgba(37, 99, 235, 0.18);
 }
 
 .acknowledge-button:disabled {
   opacity: 0.6;
+
   cursor: not-allowed;
+
+  transform: none;
+
+  box-shadow: none;
 }
+
+
+/* =========================================================
+   ACKNOWLEDGED INFO
+========================================================= */
 
 .acknowledged-info {
-  margin-top: 18px;
-  padding: 10px 14px;
+  height: 44px;
+
+  box-sizing: border-box;
+
+  margin: 0 !important;
+
+  padding: 0 14px;
+
   background: #f0fdf4;
+
   color: #15803d;
-  border-radius: 8px;
+
+  border-radius: 9px;
+
   font-size: 13px;
+
+  line-height: 1;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
 }
 
-@media (max-width: 700px) {
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 900px) {
+
   .notifications-page {
     margin-left: 70px;
+
     width: calc(100% - 70px);
-    padding: 20px;
+
+    padding: 28px 24px 40px;
   }
 
   .notifications-header {
     align-items: flex-start;
-    gap: 15px;
+  }
+
+}
+
+
+@media (max-width: 700px) {
+
+  .notifications-page {
+    margin-left: 70px;
+
+    width: calc(100% - 70px);
+
+    padding: 22px 18px 35px;
+  }
+
+  .notifications-header {
+    flex-direction: column;
+
+    align-items: stretch;
+
+    gap: 16px;
+  }
+
+  .notification-summary {
+    align-self: flex-start;
   }
 
   .notification-top {
     flex-direction: column;
+
+    gap: 12px;
+  }
+
+  .notification-status {
+    align-self: flex-start;
   }
 
   .notification-meta {
     flex-direction: column;
-    gap: 8px;
+
+    align-items: flex-start;
+
+    gap: 7px;
   }
+
+}
+
+
+@media (max-width: 500px) {
+
+  .notifications-page {
+    margin-left: 70px;
+
+    width: calc(100% - 70px);
+
+    padding: 18px 14px 30px;
+  }
+
+  .notifications-header h1 {
+    font-size: 26px;
+  }
+
+  .notification-card {
+    padding: 17px;
+  }
+
+  .notification-title-section h3 {
+    font-size: 17px;
+  }
+
+  .notification-message {
+    font-size: 13px;
+
+    line-height: 1.6;
+  }
+
+  .notification-card > div[style*="marginTop"] {
+    flex-direction: column !important;
+
+    align-items: stretch !important;
+  }
+
+  .notification-card > div[style*="marginTop"] button[style],
+  .notification-card .acknowledge-button,
+  .notification-card .acknowledged-info {
+    width: 100% !important;
+  }
+
 }

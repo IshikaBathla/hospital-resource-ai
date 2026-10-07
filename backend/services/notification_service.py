@@ -134,6 +134,14 @@ def create_notifications_from_alerts(
                 "department"
             ),
 
+            patient_id=alert.get(
+                "patient_id"
+            ),
+
+            recommendation_id=alert.get(
+                "recommendation_id"
+            ),
+
             target_role="COORDINATOR"
         )
 
