@@ -251,8 +251,6 @@ def build_unified_recommendations(
 
         if bed_action == "reallocation_required":
             overall_action = "reallocation_required"
-        elif bed_action == "staff_required":
-            overall_action = "staff_required"
         elif staff_action == "staff_required":
             overall_action = "allocate_with_staff_required"
         elif equipment_action == "equipment_required":

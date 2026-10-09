@@ -1,5 +1,5 @@
 from typing import Dict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class WhatIfScenario(BaseModel):
@@ -24,3 +24,17 @@ class WhatIfScenario(BaseModel):
     equipment_requirements: Dict[str, int] = Field(
         default_factory=dict
     )
+
+    @field_validator("equipment_requirements")
+    @classmethod
+    def validate_equipment_requirements(cls, value):
+        for equipment, quantity in value.items():
+            if not equipment.strip():
+                raise ValueError("Equipment name cannot be empty.")
+
+            if quantity < 0:
+                raise ValueError(
+                    f"Quantity for {equipment} cannot be negative."
+                )
+
+        return value

@@ -8,7 +8,9 @@ from backend.services.optimization_service import (
     optimize_resource_allocation,
     generate_optimized_recommendation,
     optimize_current_equipment_state,
-    generate_optimized_equipment_recommendation
+    generate_optimized_equipment_recommendation,
+    optimize_current_transfer_ready_reallocation,
+    generate_transfer_ready_reallocation_recommendation
 )
 
 
@@ -18,9 +20,9 @@ router = APIRouter(
 )
 
 
-# =========================================================
-# BED OPTIMIZATION
-# =========================================================
+# ============================================================
+# BED ALLOCATION OPTIMIZATION
+# ============================================================
 
 @router.get("/bed-allocation")
 def optimize_beds(
@@ -29,9 +31,9 @@ def optimize_beds(
     return optimize_current_hospital_state(db)
 
 
-# =========================================================
-# BED + STAFF OPTIMIZATION
-# =========================================================
+# ============================================================
+# RESOURCE ALLOCATION OPTIMIZATION
+# ============================================================
 
 @router.get("/resource-allocation")
 def optimize_resources(
@@ -40,9 +42,9 @@ def optimize_resources(
     return optimize_resource_allocation(db)
 
 
-# =========================================================
-# BED + STAFF RECOMMENDATION
-# =========================================================
+# ============================================================
+# CREATE OPTIMIZED BED RECOMMENDATION
+# ============================================================
 
 @router.post("/recommendation")
 def create_optimized_recommendation(
@@ -51,9 +53,9 @@ def create_optimized_recommendation(
     return generate_optimized_recommendation(db)
 
 
-# =========================================================
-# EQUIPMENT OPTIMIZATION
-# =========================================================
+# ============================================================
+# EQUIPMENT ALLOCATION OPTIMIZATION
+# ============================================================
 
 @router.get("/equipment-allocation")
 def optimize_equipment(
@@ -62,12 +64,55 @@ def optimize_equipment(
     return optimize_current_equipment_state(db)
 
 
-# =========================================================
-# EQUIPMENT RECOMMENDATION
-# =========================================================
+# ============================================================
+# CREATE OPTIMIZED EQUIPMENT RECOMMENDATION
+# ============================================================
 
 @router.post("/equipment-recommendation")
 def create_optimized_equipment_recommendation(
     db: Session = Depends(get_db)
 ):
     return generate_optimized_equipment_recommendation(db)
+
+
+# ============================================================
+# TRANSFER-READY REALLOCATION OPTIMIZATION
+# ============================================================
+
+@router.get("/transfer-ready-reallocation")
+def optimize_transfer_ready_reallocation(
+    db: Session = Depends(get_db)
+):
+    """
+    Run OR-Tools transfer-ready reallocation optimization.
+
+    This endpoint is READ-ONLY.
+
+    It does not:
+    - move patients
+    - allocate beds
+    - modify assignments
+    - create recommendations
+    """
+
+    return optimize_current_transfer_ready_reallocation(db)
+
+
+# ============================================================
+# CREATE TRANSFER-READY REALLOCATION RECOMMENDATION
+# ============================================================
+
+@router.post("/transfer-ready-reallocation/recommendation")
+def create_transfer_ready_reallocation_recommendation(
+    db: Session = Depends(get_db)
+):
+    """
+    Generate and save the best transfer-ready reallocation
+    as a pending Recommendation.
+
+    This endpoint does NOT move any patient or bed.
+
+    Human approval is required before the actual reallocation.
+    """
+
+    return generate_transfer_ready_reallocation_recommendation(db)

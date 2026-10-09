@@ -1,8 +1,12 @@
+from datetime import datetime
+
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException
 )
+
+from pydantic import BaseModel
 
 from sqlalchemy.orm import Session
 
@@ -32,6 +36,18 @@ router = APIRouter(
     prefix="/patients",
     tags=["Patients"]
 )
+
+
+# =========================================================
+# OPERATIONAL STATUS REQUEST
+# =========================================================
+
+class PatientOperationalStatusUpdate(BaseModel):
+
+    care_status: str
+    transfer_ready: bool
+    expected_release_at: datetime | None = None
+    staff_note: str | None = None
 
 
 # =========================================================
@@ -109,6 +125,149 @@ def add_patient(
         db,
         patient_data
     )
+
+
+# =========================================================
+# UPDATE PATIENT OPERATIONAL STATUS
+#
+# STAFF / COORDINATOR / ADMIN
+#
+# IMPORTANT:
+# This endpoint does NOT decide whether treatment is complete.
+# An authorized human explicitly provides the operational status.
+# =========================================================
+
+@router.put(
+    "/{patient_id}/operational-status"
+)
+def update_patient_operational_status(
+    patient_id: str,
+    status_data: PatientOperationalStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles(
+            "STAFF",
+            "COORDINATOR",
+            "ADMIN"
+        )
+    )
+):
+
+    patient = (
+        db.query(Patient)
+        .filter(
+            Patient.patient_id == patient_id
+        )
+        .first()
+    )
+
+    if not patient:
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    # -----------------------------------------------------
+    # Validate care status
+    # -----------------------------------------------------
+
+    allowed_care_statuses = {
+        "active",
+        "transfer_ready",
+        "completed"
+    }
+
+    if status_data.care_status not in allowed_care_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid care_status. Allowed values: "
+                "active, transfer_ready, completed"
+            )
+        )
+
+    # -----------------------------------------------------
+    # Transfer-ready consistency
+    # -----------------------------------------------------
+
+    if (
+        status_data.care_status == "transfer_ready"
+        and not status_data.transfer_ready
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "care_status='transfer_ready' requires "
+                "transfer_ready=true"
+            )
+        )
+
+    if (
+        status_data.care_status != "transfer_ready"
+        and status_data.transfer_ready
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "transfer_ready can only be true when "
+                "care_status='transfer_ready'"
+            )
+        )
+
+    # -----------------------------------------------------
+    # Expected release time
+    # -----------------------------------------------------
+
+    if (
+        status_data.transfer_ready
+        and status_data.expected_release_at is None
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "expected_release_at is required when "
+                "patient is marked transfer-ready"
+            )
+        )
+
+    # -----------------------------------------------------
+    # Update patient operational state
+    # -----------------------------------------------------
+
+    patient.care_status = status_data.care_status
+
+    patient.transfer_ready = (
+        status_data.transfer_ready
+    )
+
+    patient.expected_release_at = (
+        status_data.expected_release_at
+    )
+
+    patient.staff_note = (
+        status_data.staff_note
+    )
+
+    db.commit()
+
+    db.refresh(patient)
+
+    return {
+        "status": "success",
+        "message": (
+            "Patient operational status updated"
+        ),
+        "patient": {
+            "patient_id": patient.patient_id,
+            "care_status": patient.care_status,
+            "transfer_ready": patient.transfer_ready,
+            "expected_release_at": (
+                patient.expected_release_at
+            ),
+            "staff_note": patient.staff_note
+        },
+        "human_confirmed": True
+    }
 
 
 # =========================================================

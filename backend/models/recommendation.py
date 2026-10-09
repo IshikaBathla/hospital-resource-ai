@@ -45,6 +45,26 @@ class Recommendation(Base):
         String(20)
     )
 
+    # -----------------------------------------------------
+    # REALLOCATION SUPPORT
+    # -----------------------------------------------------
+
+    affected_patient_id = Column(
+        String(20),
+        ForeignKey("patients.patient_id"),
+        nullable=True
+    )
+
+    affected_patient_current_bed_id = Column(
+        String(20),
+        nullable=True
+    )
+
+    affected_patient_replacement_bed_id = Column(
+        String(20),
+        nullable=True
+    )
+
     reason = Column(
         Text,
         nullable=False

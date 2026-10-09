@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -11,4 +13,8 @@ class PatientCreate(BaseModel):
 
 
 class PatientResponse(PatientCreate):
-    pass
+
+    care_status: str
+    transfer_ready: bool
+    expected_release_at: datetime | None = None
+    staff_note: str | None = None

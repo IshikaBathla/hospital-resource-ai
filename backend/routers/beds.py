@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 
 from backend.schemas.bed import (
+    BedCreate,
     BedUpdate,
     BedResponse
 )
@@ -19,6 +20,8 @@ from backend.services.bed_service import (
     get_available_beds,
     update_bed
 )
+
+from backend.models.bed import Bed
 
 from backend.utils.dependencies import (
     get_current_user,
@@ -92,6 +95,87 @@ def get_bed(
             status_code=404,
             detail="Bed not found"
         )
+
+    return bed
+
+
+# =========================================================
+# CREATE BED
+# ADMIN ONLY
+# =========================================================
+
+@router.post(
+    "/",
+    response_model=BedResponse,
+    status_code=201
+)
+def create_bed(
+    data: BedCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_roles("ADMIN")
+    )
+):
+
+    # -----------------------------------------------------
+    # Prevent duplicate bed IDs
+    # -----------------------------------------------------
+
+    existing_bed = get_bed_by_id(
+        db,
+        data.bed_id
+    )
+
+    if existing_bed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Bed {data.bed_id} already exists"
+        )
+
+    # -----------------------------------------------------
+    # Validate status
+    # -----------------------------------------------------
+
+    allowed_statuses = {
+        "available",
+        "occupied",
+        "maintenance",
+        "turnover_required"
+    }
+
+    if data.status not in allowed_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid bed status. Allowed values: "
+                "available, occupied, maintenance, "
+                "turnover_required"
+            )
+        )
+
+    # -----------------------------------------------------
+    # Available bed cannot have a patient
+    # -----------------------------------------------------
+
+    if data.status == "available":
+        data.patient_id = None
+        data.expected_release_at = None
+
+    # -----------------------------------------------------
+    # Create bed
+    # -----------------------------------------------------
+
+    bed = Bed(
+        bed_id=data.bed_id,
+        ward=data.ward,
+        status=data.status,
+        patient_id=data.patient_id,
+        expected_release_at=data.expected_release_at
+    )
+
+    db.add(bed)
+    db.commit()
+    db.refresh(bed)
 
     return bed
 
