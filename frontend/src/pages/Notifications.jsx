@@ -1,27 +1,17 @@
 import { useEffect, useState } from "react";
-
 import { useNavigate } from "react-router-dom";
-
 import api from "../services/api";
-
 import "./Notifications.css";
 
 function Notifications() {
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState([]);
-
   const [loading, setLoading] = useState(true);
-
-  const [acknowledgingId, setAcknowledgingId] =
-    useState(null);
-
+  const [acknowledgingId, setAcknowledgingId] = useState(null);
   const [error, setError] = useState("");
 
-  // =========================================================
-  // FETCH NOTIFICATIONS
-  // =========================================================
-
+  // Fetch notifications from the backend
   const fetchNotifications = async () => {
     try {
       setLoading(true);
@@ -29,15 +19,9 @@ function Notifications() {
 
       const response = await api.get("/notifications");
 
-      setNotifications(
-        response.data.notifications || []
-      );
+      setNotifications(response.data.notifications || []);
     } catch (err) {
-      console.error(
-        "Failed to fetch notifications:",
-        err
-      );
-
+      console.error("Failed to fetch notifications:", err);
       setError("Failed to load notifications.");
     } finally {
       setLoading(false);
@@ -48,25 +32,21 @@ function Notifications() {
     fetchNotifications();
   }, []);
 
-  // =========================================================
-  // REAL-TIME NOTIFICATION MONITORING
-  // =========================================================
-
+  // Real-time notification monitoring
   useEffect(() => {
+    // Keep the existing local WebSocket connection for local development.
+    // Configure the deployed backend WebSocket URL separately for production.
     const socket = new WebSocket(
       "ws://127.0.0.1:8000/ws/notifications"
     );
 
     socket.onopen = () => {
-      console.log(
-        "Live notification connection established."
-      );
+      console.log("Live notification connection established.");
     };
 
     socket.onmessage = (event) => {
       try {
-        const realtimeNotification =
-          JSON.parse(event.data);
+        const realtimeNotification = JSON.parse(event.data);
 
         console.log(
           "Real-time notification received:",
@@ -74,105 +54,99 @@ function Notifications() {
         );
 
         const notificationId =
-          realtimeNotification.notification_id;
+          realtimeNotification.notification_id ??
+          realtimeNotification.notification?.notification_id;
 
         if (!notificationId) {
           return;
         }
 
-        setNotifications(
-          (previousNotifications) => {
-            const alreadyExists =
-              previousNotifications.some(
-                (notification) =>
-                  notification.notification_id ===
-                  notificationId
-              );
+        const recommendationId =
+          realtimeNotification.recommendation_id ??
+          realtimeNotification.recommendation?.recommendation_id ??
+          realtimeNotification.notification?.recommendation_id ??
+          null;
 
-            if (alreadyExists) {
-              return previousNotifications;
-            }
+        const newNotification = {
+          notification_id: notificationId,
 
-            const recommendationId =
-              realtimeNotification.recommendation_id ||
-              realtimeNotification.recommendation
-                ?.recommendation_id ||
-              null;
+          notification_type:
+            realtimeNotification.notification_type ??
+            realtimeNotification.notification?.notification_type ??
+            "SYSTEM_ALERT",
 
-            const newNotification = {
-              notification_id:
-                notificationId,
+          severity:
+            realtimeNotification.severity ??
+            realtimeNotification.notification?.severity ??
+            "WARNING",
 
-              notification_type:
-                realtimeNotification.notification_type ||
-                "SYSTEM_ALERT",
+          title:
+            realtimeNotification.title ??
+            realtimeNotification.notification?.title ??
+            "New operational notification",
 
-              severity:
-                realtimeNotification.severity ||
-                "WARNING",
+          message:
+            realtimeNotification.message ??
+            realtimeNotification.notification?.message ??
+            "A new hospital operational event requires attention.",
 
-              title:
-                realtimeNotification.title ||
-                "New operational notification",
+          department:
+            realtimeNotification.department ??
+            realtimeNotification.recommendation?.recommended_ward ??
+            null,
 
-              message:
-                realtimeNotification.message ||
-                "A new hospital operational event requires attention.",
+          patient_id:
+            realtimeNotification.patient?.patient_id ??
+            realtimeNotification.patient_id ??
+            realtimeNotification.notification?.patient_id ??
+            null,
 
-              department:
-                realtimeNotification.department ||
-                realtimeNotification.recommendation
-                  ?.recommended_ward ||
-                null,
+          recommendation_id: recommendationId,
 
-              patient_id:
-                realtimeNotification.patient
-                  ?.patient_id ||
-                realtimeNotification.patient_id ||
-                null,
+          target_role:
+            realtimeNotification.target_role ?? "COORDINATOR",
 
-              recommendation_id:
-                recommendationId,
+          status: "UNREAD",
+          created_at: new Date().toISOString(),
+          acknowledged_at: null,
+          acknowledged_by: null,
+        };
 
-              target_role:
-                realtimeNotification.target_role ||
-                "COORDINATOR",
+        setNotifications((previousNotifications) => {
+          const alreadyExists = previousNotifications.some(
+            (notification) =>
+              notification.notification_id === notificationId
+          );
 
-              status: "UNREAD",
-
-              created_at:
-                new Date().toISOString(),
-
-              acknowledged_at: null,
-
-              acknowledged_by: null,
-            };
-
-            return [
-              newNotification,
-              ...previousNotifications,
-            ];
+          if (alreadyExists) {
+            // Refresh recommendation information if a notification
+            // already exists in the list.
+            return previousNotifications.map((notification) =>
+              notification.notification_id === notificationId
+                ? {
+                    ...notification,
+                    ...newNotification,
+                    status: notification.status,
+                    acknowledged_at: notification.acknowledged_at,
+                    acknowledged_by: notification.acknowledged_by,
+                  }
+                : notification
+            );
           }
-        );
+
+          return [newNotification, ...previousNotifications];
+        });
       } catch (err) {
-        console.error(
-          "Invalid real-time notification:",
-          err
-        );
+        console.error("Invalid real-time notification:", err);
       }
     };
 
     socket.onerror = (event) => {
-      console.error(
-        "Live notification connection error:",
-        event
-      );
+      console.error("Live notification connection error:", event);
     };
 
     socket.onclose = () => {
-      console.log(
-        "Live notification connection closed."
-      );
+      console.log("Live notification connection closed.");
     };
 
     return () => {
@@ -180,15 +154,11 @@ function Notifications() {
     };
   }, []);
 
-  // =========================================================
-  // ACKNOWLEDGE NOTIFICATION
-  // =========================================================
-
-  const handleAcknowledge = async (
-    notificationId
-  ) => {
+  // Acknowledge notification
+  const handleAcknowledge = async (notificationId) => {
     try {
       setAcknowledgingId(notificationId);
+      setError("");
 
       await api.put(
         `/notifications/${notificationId}/acknowledge`
@@ -196,10 +166,7 @@ function Notifications() {
 
       await fetchNotifications();
     } catch (err) {
-      console.error(
-        "Failed to acknowledge notification:",
-        err
-      );
+      console.error("Failed to acknowledge notification:", err);
 
       const message =
         err.response?.data?.detail ||
@@ -211,290 +178,235 @@ function Notifications() {
     }
   };
 
-  // =========================================================
-  // REVIEW RECOMMENDATION
-  // =========================================================
-
-  const handleReviewRecommendation = (
-    recommendationId
-  ) => {
+  // Review an existing recommendation
+  const handleReviewRecommendation = (recommendationId) => {
     if (!recommendationId) {
       return;
     }
 
     navigate(
-      `/recommendations?recommendation=${recommendationId}`
+      `/recommendations?recommendation=${encodeURIComponent(
+        recommendationId
+      )}`
     );
   };
 
-  // =========================================================
-  // UNREAD COUNT
-  // =========================================================
+  // Open the patients page when no recommendation exists
+  const handleViewPatient = (patientId) => {
+    if (!patientId) {
+      return;
+    }
 
+    navigate(`/patients?patient=${encodeURIComponent(patientId)}`);
+  };
+
+  // Count unread notifications
   const unreadCount = notifications.filter(
-    (notification) =>
-      notification.status === "UNREAD"
+    (notification) => notification.status === "UNREAD"
   ).length;
-
-  // =========================================================
-  // RENDER
-  // =========================================================
 
   return (
     <div className="notifications-page">
-
-      {/* HEADER */}
-
+      {/* Header */}
       <div className="notifications-header">
-
         <div>
-
           <h1>Notifications</h1>
-
           <p>
-            Operational alerts and resource
-            coordination updates
+            Operational alerts and resource coordination updates
           </p>
-
         </div>
 
         <div className="notification-summary">
-
           <span className="notification-count">
             {unreadCount}
           </span>
 
-          <span>
-            Unread
-          </span>
-
+          <span>Unread</span>
         </div>
-
       </div>
 
-      {/* ERROR */}
-
+      {/* Error */}
       {error && (
         <div className="notification-error">
           {error}
         </div>
       )}
 
-      {/* CONTENT */}
-
+      {/* Content */}
       {loading ? (
-
         <div className="notification-loading">
           Loading notifications...
         </div>
-
       ) : notifications.length === 0 ? (
-
         <div className="notification-empty">
-
-          <h3>
-            No notifications
-          </h3>
-
+          <h3>No notifications</h3>
           <p>
-            There are currently no operational
-            notifications.
+            There are currently no operational notifications.
           </p>
-
         </div>
-
       ) : (
-
         <div className="notifications-list">
+          {notifications.map((notification) => {
+            const recommendationId =
+              notification.recommendation_id;
 
-          {notifications.map(
-            (notification) => {
+            const patientId = notification.patient_id;
 
-              const recommendationId =
-                notification.recommendation_id;
+            const isAcknowledging =
+              acknowledgingId === notification.notification_id;
 
-              return (
-                <div
-                  key={
-                    notification.notification_id
-                  }
-                  className={`notification-card ${
-                    notification.status ===
-                    "ACKNOWLEDGED"
-                      ? "acknowledged"
-                      : "unread"
-                  }`}
-                >
-
-                  {/* TOP */}
-
-                  <div className="notification-top">
-
-                    <div className="notification-title-section">
-
-                      <span
-                        className={`severity-badge ${
-                          notification.severity?.toLowerCase()
-                        }`}
-                      >
-                        {notification.severity}
-                      </span>
-
-                      <h3>
-                        {notification.title}
-                      </h3>
-
-                    </div>
-
-                    <span className="notification-status">
-                      {notification.status}
+            return (
+              <div
+                key={notification.notification_id}
+                className={`notification-card ${
+                  notification.status === "ACKNOWLEDGED"
+                    ? "acknowledged"
+                    : "unread"
+                }`}
+              >
+                {/* Notification heading */}
+                <div className="notification-top">
+                  <div className="notification-title-section">
+                    <span
+                      className={`severity-badge ${
+                        notification.severity?.toLowerCase()
+                      }`}
+                    >
+                      {notification.severity}
                     </span>
 
+                    <h3>{notification.title}</h3>
                   </div>
 
-                  {/* MESSAGE */}
-
-                  <p className="notification-message">
-                    {notification.message}
-                  </p>
-
-                  {/* META */}
-
-                  <div className="notification-meta">
-
-                    <span>
-                      <strong>
-                        Department:
-                      </strong>{" "}
-                      {notification.department ||
-                        "N/A"}
-                    </span>
-
-                    <span>
-                      <strong>
-                        Type:
-                      </strong>{" "}
-                      {notification.notification_type}
-                    </span>
-
-                    <span>
-                      <strong>
-                        Created:
-                      </strong>{" "}
-                      {notification.created_at
-                        ? new Date(
-                            notification.created_at
-                          ).toLocaleString()
-                        : "N/A"}
-                    </span>
-
-                    {notification.patient_id && (
-                      <span>
-                        <strong>
-                          Patient:
-                        </strong>{" "}
-                        {notification.patient_id}
-                      </span>
-                    )}
-
-                    {recommendationId && (
-                      <span>
-                        <strong>
-                          Recommendation:
-                        </strong>{" "}
-                        #{recommendationId}
-                      </span>
-                    )}
-
-                  </div>
-
-                  {/* ACTIONS */}
-
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "12px",
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      marginTop: "18px",
-                    }}
-                  >
-
-                    {/* REVIEW RECOMMENDATION */}
-
-                    {recommendationId && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleReviewRecommendation(
-                            recommendationId
-                          )
-                        }
-                        style={{
-                          border: "none",
-                          borderRadius: "10px",
-                          padding:
-                            "11px 18px",
-                          background:
-                            "#111827",
-                          color:
-                            "#ffffff",
-                          fontSize:
-                            "14px",
-                          fontWeight: 700,
-                          cursor:
-                            "pointer",
-                        }}
-                      >
-                        Review Recommendation
-                      </button>
-                    )}
-
-                    {/* ACKNOWLEDGE */}
-
-                    {notification.status ===
-                    "ACKNOWLEDGED" ? (
-
-                      <div className="acknowledged-info">
-                        ✓ Acknowledged by{" "}
-                        <strong>
-                          {notification.acknowledged_by ||
-                            "User"}
-                        </strong>
-                      </div>
-
-                    ) : (
-
-                      <button
-                        className="acknowledge-button"
-                        onClick={() =>
-                          handleAcknowledge(
-                            notification.notification_id
-                          )
-                        }
-                        disabled={
-                          acknowledgingId ===
-                          notification.notification_id
-                        }
-                      >
-                        {acknowledgingId ===
-                        notification.notification_id
-                          ? "Acknowledging..."
-                          : "Acknowledge"}
-                      </button>
-
-                    )}
-
-                  </div>
-
+                  <span className="notification-status">
+                    {notification.status}
+                  </span>
                 </div>
-              );
-            }
-          )}
 
+                {/* Message */}
+                <p className="notification-message">
+                  {notification.message}
+                </p>
+
+                {/* Metadata */}
+                <div className="notification-meta">
+                  <span>
+                    <strong>Department:</strong>{" "}
+                    {notification.department || "N/A"}
+                  </span>
+
+                  <span>
+                    <strong>Type:</strong>{" "}
+                    {notification.notification_type || "N/A"}
+                  </span>
+
+                  <span>
+                    <strong>Created:</strong>{" "}
+                    {notification.created_at
+                      ? new Date(
+                          notification.created_at
+                        ).toLocaleString()
+                      : "N/A"}
+                  </span>
+
+                  {patientId && (
+                    <span>
+                      <strong>Patient:</strong> {patientId}
+                    </span>
+                  )}
+
+                  {recommendationId && (
+                    <span>
+                      <strong>Recommendation:</strong>{" "}
+                      #{recommendationId}
+                    </span>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "12px",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    marginTop: "18px",
+                  }}
+                >
+                  {/* Recommendation available */}
+                  {recommendationId && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleReviewRecommendation(
+                          recommendationId
+                        )
+                      }
+                      style={{
+                        border: "none",
+                        borderRadius: "10px",
+                        padding: "11px 18px",
+                        background: "#111827",
+                        color: "#ffffff",
+                        fontSize: "14px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Review Recommendation
+                    </button>
+                  )}
+
+                  {/* No recommendation, but patient exists */}
+                  {!recommendationId && patientId && (
+                    <button
+                      type="button"
+                      onClick={() => handleViewPatient(patientId)}
+                      style={{
+                        border: "none",
+                        borderRadius: "10px",
+                        padding: "11px 18px",
+                        background: "#2563eb",
+                        color: "#ffffff",
+                        fontSize: "14px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      View Patient
+                    </button>
+                  )}
+
+                  {/* Acknowledgement */}
+                  {notification.status === "ACKNOWLEDGED" ? (
+                    <div className="acknowledged-info">
+                      ✓ Acknowledged by{" "}
+                      <strong>
+                        {notification.acknowledged_by || "User"}
+                      </strong>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="acknowledge-button"
+                      onClick={() =>
+                        handleAcknowledge(
+                          notification.notification_id
+                        )
+                      }
+                      disabled={isAcknowledging}
+                    >
+                      {isAcknowledging
+                        ? "Acknowledging..."
+                        : "Acknowledge"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
-
     </div>
   );
 }
