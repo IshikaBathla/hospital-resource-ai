@@ -28,17 +28,23 @@ function Notifications() {
     }
   };
 
+  // Initial notification loading
   useEffect(() => {
     fetchNotifications();
   }, []);
 
   // Real-time notification monitoring
   useEffect(() => {
-    // Keep the existing local WebSocket connection for local development.
-    // Configure the deployed backend WebSocket URL separately for production.
-    const socket = new WebSocket(
-      "ws://127.0.0.1:8000/ws/notifications"
-    );
+    const apiBaseUrl = (
+      import.meta.env.VITE_API_BASE_URL ||
+      "http://127.0.0.1:8000"
+    ).replace(/\/+$/, "");
+
+    const websocketUrl =
+      apiBaseUrl.replace(/^https:/, "wss:").replace(/^http:/, "ws:") +
+      "/ws/notifications";
+
+    const socket = new WebSocket(websocketUrl);
 
     socket.onopen = () => {
       console.log("Live notification connection established.");
@@ -48,10 +54,7 @@ function Notifications() {
       try {
         const realtimeNotification = JSON.parse(event.data);
 
-        console.log(
-          "Real-time notification received:",
-          realtimeNotification
-        );
+        console.log("Real-time notification received:", realtimeNotification);
 
         const notificationId =
           realtimeNotification.notification_id ??
@@ -103,8 +106,7 @@ function Notifications() {
 
           recommendation_id: recommendationId,
 
-          target_role:
-            realtimeNotification.target_role ?? "COORDINATOR",
+          target_role: realtimeNotification.target_role ?? "COORDINATOR",
 
           status: "UNREAD",
           created_at: new Date().toISOString(),
@@ -119,8 +121,6 @@ function Notifications() {
           );
 
           if (alreadyExists) {
-            // Refresh recommendation information if a notification
-            // already exists in the list.
             return previousNotifications.map((notification) =>
               notification.notification_id === notificationId
                 ? {
@@ -160,9 +160,7 @@ function Notifications() {
       setAcknowledgingId(notificationId);
       setError("");
 
-      await api.put(
-        `/notifications/${notificationId}/acknowledge`
-      );
+      await api.put(`/notifications/${notificationId}/acknowledge`);
 
       await fetchNotifications();
     } catch (err) {
@@ -211,26 +209,17 @@ function Notifications() {
       <div className="notifications-header">
         <div>
           <h1>Notifications</h1>
-          <p>
-            Operational alerts and resource coordination updates
-          </p>
+          <p>Operational alerts and resource coordination updates</p>
         </div>
 
         <div className="notification-summary">
-          <span className="notification-count">
-            {unreadCount}
-          </span>
-
+          <span className="notification-count">{unreadCount}</span>
           <span>Unread</span>
         </div>
       </div>
 
       {/* Error */}
-      {error && (
-        <div className="notification-error">
-          {error}
-        </div>
-      )}
+      {error && <div className="notification-error">{error}</div>}
 
       {/* Content */}
       {loading ? (
@@ -240,16 +229,12 @@ function Notifications() {
       ) : notifications.length === 0 ? (
         <div className="notification-empty">
           <h3>No notifications</h3>
-          <p>
-            There are currently no operational notifications.
-          </p>
+          <p>There are currently no operational notifications.</p>
         </div>
       ) : (
         <div className="notifications-list">
           {notifications.map((notification) => {
-            const recommendationId =
-              notification.recommendation_id;
-
+            const recommendationId = notification.recommendation_id;
             const patientId = notification.patient_id;
 
             const isAcknowledging =
@@ -303,9 +288,7 @@ function Notifications() {
                   <span>
                     <strong>Created:</strong>{" "}
                     {notification.created_at
-                      ? new Date(
-                          notification.created_at
-                        ).toLocaleString()
+                      ? new Date(notification.created_at).toLocaleString()
                       : "N/A"}
                   </span>
 
@@ -317,8 +300,7 @@ function Notifications() {
 
                   {recommendationId && (
                     <span>
-                      <strong>Recommendation:</strong>{" "}
-                      #{recommendationId}
+                      <strong>Recommendation:</strong> #{recommendationId}
                     </span>
                   )}
                 </div>
@@ -333,14 +315,11 @@ function Notifications() {
                     marginTop: "18px",
                   }}
                 >
-                  {/* Recommendation available */}
                   {recommendationId && (
                     <button
                       type="button"
                       onClick={() =>
-                        handleReviewRecommendation(
-                          recommendationId
-                        )
+                        handleReviewRecommendation(recommendationId)
                       }
                       style={{
                         border: "none",
@@ -357,7 +336,6 @@ function Notifications() {
                     </button>
                   )}
 
-                  {/* No recommendation, but patient exists */}
                   {!recommendationId && patientId && (
                     <button
                       type="button"
@@ -377,22 +355,17 @@ function Notifications() {
                     </button>
                   )}
 
-                  {/* Acknowledgement */}
                   {notification.status === "ACKNOWLEDGED" ? (
                     <div className="acknowledged-info">
                       ✓ Acknowledged by{" "}
-                      <strong>
-                        {notification.acknowledged_by || "User"}
-                      </strong>
+                      <strong>{notification.acknowledged_by || "User"}</strong>
                     </div>
                   ) : (
                     <button
                       type="button"
                       className="acknowledge-button"
                       onClick={() =>
-                        handleAcknowledge(
-                          notification.notification_id
-                        )
+                        handleAcknowledge(notification.notification_id)
                       }
                       disabled={isAcknowledging}
                     >
