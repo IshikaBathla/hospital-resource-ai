@@ -1,11 +1,12 @@
+
 import asyncio
 
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import initialize_database
-from fastapi.middleware.cors import CORSMiddleware
 
 from backend.routers.patients import (
     router as patient_router
@@ -70,8 +71,10 @@ from backend.routers.alerts import (
 from backend.routers.notifications import (
     router as notification_router
 )
+
 from backend.routers import events
 from backend.routers import websocket
+
 
 # =========================================================
 # APPLICATION LIFESPAN
@@ -88,29 +91,21 @@ async def lifespan(app: FastAPI):
         background_resource_monitor()
     )
 
-    print(
-        "Background resource monitor started."
-    )
+    print("Background resource monitor started.")
 
     try:
-
         yield
 
     finally:
-
         monitor_task.cancel()
 
         try:
-
             await monitor_task
 
         except asyncio.CancelledError:
-
             pass
 
-        print(
-            "Background resource monitor stopped."
-        )
+        print("Background resource monitor stopped.")
 
 
 # =========================================================
@@ -132,14 +127,23 @@ app = FastAPI(
 )
 
 
+# =========================================================
+# CORS CONFIGURATION
+# =========================================================
+
 app.add_middleware(
     CORSMiddleware,
+
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://hospital-resource-ai.vercel.app",
     ],
+
     allow_credentials=True,
+
     allow_methods=["*"],
+
     allow_headers=["*"],
 )
 
@@ -148,74 +152,29 @@ app.add_middleware(
 # ROUTERS
 # =========================================================
 
-app.include_router(
-    patient_router
-)
+app.include_router(patient_router)
+app.include_router(bed_router)
+app.include_router(staff_router)
+app.include_router(equipment_router)
+app.include_router(assignment_router)
+app.include_router(recommendation_router)
+app.include_router(procedure_router)
+app.include_router(simulation_router)
+app.include_router(optimization_router)
 
-app.include_router(
-    bed_router
-)
+app.include_router(forecasting.router)
+app.include_router(outcomes.router)
+app.include_router(what_if.router)
 
-app.include_router(
-    staff_router
-)
+app.include_router(strategy_router)
+app.include_router(auth.router)
 
-app.include_router(
-    equipment_router
-)
+app.include_router(alert_router)
+app.include_router(notification_router)
 
-app.include_router(
-    assignment_router
-)
-
-app.include_router(
-    recommendation_router
-)
-
-app.include_router(
-    procedure_router
-)
-
-app.include_router(
-    simulation_router
-)
-
-app.include_router(
-    optimization_router
-)
-
-app.include_router(
-    forecasting.router
-)
-
-app.include_router(
-    outcomes.router
-)
-
-app.include_router(
-    what_if.router
-)
-
-app.include_router(
-    strategy_router
-)
-
-app.include_router(
-    auth.router
-)
-
-app.include_router(
-    alert_router
-)
-
-app.include_router(
-    notification_router
-)
 app.include_router(events.router)
+app.include_router(websocket.router)
 
-app.include_router(
-    websocket.router
-)
 
 # =========================================================
 # HEALTH CHECK
